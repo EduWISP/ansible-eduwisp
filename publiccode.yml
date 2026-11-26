@@ -1,0 +1,53 @@
+# publiccode.yml — metadati per il catalogo Developers Italia / metadata for the Developers Italia catalogue
+publiccodeYmlVersion: "0"
+
+name: ansible-eduwisp
+url: "https://github.com/EduWISP/ansible-eduwisp"
+landingURL: "https://eduwisp.github.io/docs/architettura/deployment/"
+platforms:
+  - linux
+
+categories:
+  - it-management
+
+developmentStatus: concept
+softwareType: "configurationFiles"
+
+intendedAudience:
+  scope:
+    - education
+  countries:
+    - IT
+
+description:
+  it:
+    shortDescription: "EduWISP — Installazione con Ansible"
+    longDescription: "Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie). Fa parte di EduWISP, piattaforma open source e gratuita per la gestione dei dispositivi digitali di proprietà delle scuole, con MDM, gestione scolastica, Family Control e prevenzione del cyberbullismo. Il progetto è in fase di progettazione e rispetta come vincolo bloccante il GDPR e la normativa italiana su privacy e minori. Documentazione: https://eduwisp.github.io/docs/"
+    documentation: "https://eduwisp.github.io/docs/"
+    features:
+      - "Installazione con Ansible"
+  en:
+    shortDescription: "EduWISP — Ansible deployment"
+    longDescription: "Ansible role to install and upgrade EduWISP on Debian GNU/Linux 13 (Trixie). Part of EduWISP, a free and open-source platform to manage school-owned digital devices, with MDM, school management, family control and cyberbullying prevention. The project is in the design phase and treats GDPR and Italian law on privacy and minors as a blocking constraint. Documentation: https://eduwisp.github.io/docs/en/"
+    documentation: "https://eduwisp.github.io/docs/en/"
+    features:
+      - "Ansible deployment"
+
+legal:
+  license: AGPL-3.0-or-later
+  mainCopyrightOwner: Michele Salerno
+
+organisation:
+  name: EduWISP
+  uri: "https://github.com/EduWISP"
+
+maintenance:
+  type: community
+  contacts:
+    - name: Michele Salerno
+
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - it
+    - en
