@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
 ---
-# Rilascio 0.3.0 della piattaforma EduWISP: ruolo e collegamenti delle famiglie (ADR-0018).
+# Rilascio 0.3.0 della piattaforma EduWISP: famiglie, registro delle operazioni e
+# interfaccia per ruoli con «vedi come» in sola lettura (ADR-0018).
 # Ogni modulo è fissato a un commit preciso (ADR-0010, ADR-0016).
 eduwisp_platform_django: "Django>=5.2,<5.3"
 eduwisp_platform_modules:
@@ -10,3 +11,5 @@ eduwisp_platform_modules:
   - { name: eduwisp-users, version: f26afd3f174a053b007fcd7bca0bfb44d19af5a9 }
   - { name: eduwisp-school, version: 625553f5cfd7266185af162e112702187af1629d }
   - { name: eduwisp-devices, version: 0e6cbb990ec24c0c2db0cc1d7b1612caa79cb29f }
+  - { name: eduwisp-audit, version: 67a2f6aac9ccbe2d9c8bcf0c5d6cc2c3c6b1c216 }
+  - { name: eduwisp-portal, version: c45ef36d1cf9803d6cc47b72ab5a94d0fa268d62 }

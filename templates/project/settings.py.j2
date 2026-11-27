@@ -14,6 +14,10 @@ INSTALLED_APPS = [
     "eduwisp_users",
     "eduwisp_school",
     "eduwisp_devices",
+{% if eduwisp_portal %}
+    "eduwisp_audit",
+    "eduwisp_portal",
+{% endif %}
     "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -30,6 +34,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+{% if eduwisp_portal %}
+    # «Vedi come» in sola lettura (ADR-0018): dopo sessioni e autenticazione.
+    "eduwisp_portal.middleware.SolaLetturaVediComeMiddleware",
+{% endif %}
 ]
 ROOT_URLCONF = "eduwisp_server.urls"
 WSGI_APPLICATION = "eduwisp_server.wsgi.application"
@@ -43,6 +51,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "eduwisp_users.context_processors.environment",
+{% if eduwisp_portal %}
+                "eduwisp_portal.context_processors.portale",
+{% endif %}
             ]
         },
     }
@@ -67,6 +78,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = "{{ eduwisp_home }}/static"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+{% if eduwisp_portal %}
+LOGIN_URL = "eduwisp_portal:accedi"
+LOGIN_REDIRECT_URL = "/"
+{% endif %}
 
 # Sicurezza
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
