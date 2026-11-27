@@ -20,3 +20,4 @@
 - Rilascio 0.4.0: studenti maggiorenni, accesso dei familiari solo con il loro consenso dal tablet (ADR-0018); dati della demo con date della maggiore età e scelte. / *Release 0.4.0: adult students' family-access consent; demo data updated.*
 - Rilascio 0.5.0: app consentite e sblocchi temporanei dei docenti (eduwisp-apps, ADR-0019); catalogo di esempio nella demo con l'elenco attivo. / *Release 0.5.0: app allowlist; demo catalogue.*
 - Rilascio 0.6.0: elenco unico con la spunta «obbligatoria», loghi e installazione silenziosa degli APK (ADR-0020); cartelle per loghi (serviti da nginx, solo immagini) e APK (privati, inclusi nei backup); caricamenti fino a 300 MB nel catalogo. / *Release 0.6.0: required flag, logos, silent APK install.*
+- Rilascio 0.7.0: richieste di app dal tablet, parere della famiglia, decisione motivata del docente e app per il singolo studente (ADR-0021); esempi nella demo. / *Release 0.7.0: app requests and per-student apps.*
