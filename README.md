@@ -26,6 +26,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza, **limiti di richieste** su registrazione dei dispositivi e accesso all'amministrazione (429); **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
 | Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio remoto via SSH sul **server di backup dedicato** ([`ansible-eduwisp-backup`](https://github.com/EduWISP/ansible-eduwisp-backup), ADR-0017), in sola aggiunta; l'archivio locale resta solo per le prove |
 | Monitoraggio e avvisi | **Monit** (servizi, disco, memoria, carico, risposta HTTPS e scadenza del certificato), invio della posta con **msmtp** tramite un relay SMTP autenticato, **avviso immediato** se il backup o la prova di ripristino falliscono, **riepilogo quotidiano** di sicurezza (allarmi Suricata, fail2ban, backup, certificato, aggiornamenti) |
+| App consentite | Dal rilascio 0.5.0: [`eduwisp-apps`](https://github.com/EduWISP/eduwisp-apps), elenco di app consentite per istituto, indirizzo e classe e sblocchi temporanei dei docenti (ADR-0019) |
 | Interfaccia per ruoli | Dal rilascio 0.3.0: [`eduwisp-portal`](https://github.com/EduWISP/eduwisp-portal) con le pagine di dirigente, docente e famiglia, l'area dell'amministratore e il **«vedi come» in sola lettura**, registrato in [`eduwisp-audit`](https://github.com/EduWISP/eduwisp-audit) (ADR-0018); accesso da `/accedi/` con lo stesso limite di richieste dell'amministrazione |
 | Amministratore | Creato o aggiornato da Ansible con la password presa dal vault (almeno 12 caratteri), senza mai mostrarla nei log |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
@@ -79,7 +80,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.4.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.5.0
 ```
 
 La procedura:

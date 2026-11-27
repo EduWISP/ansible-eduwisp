@@ -16,6 +16,11 @@ INSTALLED_APPS = [
     "eduwisp_devices",
 {% if eduwisp_portal %}
     "eduwisp_audit",
+{% endif %}
+{% if eduwisp_apps %}
+    "eduwisp_apps",
+{% endif %}
+{% if eduwisp_portal %}
     "eduwisp_portal",
 {% endif %}
     "rest_framework",
@@ -78,6 +83,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = "{{ eduwisp_home }}/static"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+{% if eduwisp_apps %}
+# App consentite nella policy dei dispositivi (ADR-0019).
+EDUWISP_POLICY_PROVIDERS = ["eduwisp_apps.policy.provide"]
+{% endif %}
 {% if eduwisp_portal %}
 LOGIN_URL = "eduwisp_portal:accedi"
 LOGIN_REDIRECT_URL = "/"

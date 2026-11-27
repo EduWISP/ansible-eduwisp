@@ -22,6 +22,10 @@ from django.db import transaction
 from django.utils import timezone
 
 from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy
+try:  # app consentite dal rilascio 0.5.0 (ADR-0019)
+    from eduwisp_apps.models import App, AppPolicyState, AppRule, TemporaryUnlock
+except ImportError:
+    App = None
 from eduwisp_devices.secrets import hash_secret, new_secret
 from eduwisp_school.models import (
     AssignmentKind,
@@ -111,6 +115,9 @@ def elimina():
     if org is None:
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
+    if App is not None:
+        for model in (TemporaryUnlock, AppRule, App, AppPolicyState):
+            model.objects.filter(organization=org).delete()
     for model in (
         Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy
     ):
@@ -308,7 +315,36 @@ def crea():
         for _ in range(12):
             tablet(classi[lettera, 3])  # carrello della sezione, in prestito alla terza
 
+    if App is not None:
+        catalogo_app(org, ordinamento, applicate)
     return org
+
+
+# Catalogo di esempio: app libere o gratuite, più quelle di sistema dell'emulatore AOSP.
+CATALOGO = [
+    # (nome, pacchetto, ambito): "istituto", "applicate" (indirizzo) o None (solo da sbloccare)
+    ("Firefox", "org.mozilla.firefox", "istituto"),
+    ("Wikipedia", "org.wikipedia", "istituto"),
+    ("Collabora Office", "com.collabora.libreoffice", "istituto"),
+    ("GeoGebra", "org.geogebra.android.calculator.suite", "istituto"),
+    ("Impostazioni", "com.android.settings", "istituto"),
+    ("File", "com.android.documentsui", "istituto"),
+    ("Acode (editor di codice)", "com.foxdebug.acode", "applicate"),
+    ("Fotocamera", "com.android.camera2", None),
+    ("Galleria", "com.android.gallery3d", None),
+    ("Registratore", "com.android.soundrecorder", None),
+    ("Mappe (OsmAnd)", "net.osmand.plus", None),
+]
+
+
+def catalogo_app(org, ordinamento, applicate):
+    for nome, pacchetto, ambito in CATALOGO:
+        app = App.objects.create(organization=org, name=nome, identifier=pacchetto)
+        if ambito == "istituto":
+            AppRule.objects.create(organization=org, app=app)
+        elif ambito == "applicate":
+            AppRule.objects.create(organization=org, app=app, track=applicate)
+    AppPolicyState.objects.update_or_create(organization=org, defaults={"allowlist_enabled": True})
 
 
 if os.environ.get("EDUWISP_DEMO_RESET") == "1":
