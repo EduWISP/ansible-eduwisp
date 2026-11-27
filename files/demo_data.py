@@ -4,6 +4,8 @@
 
 Liceo scientifico con 6 sezioni (A-F) e 5 anni: 30 classi. Sezioni E ed F all'opzione
 scienze applicate. Tablet personali per il biennio, un carrello condiviso per il triennio.
+Famiglie (ADR-0018): un referente per studente e spesso un secondo familiare; casi con un solo
+genitore, tutori, affidatari, un collegamento disattivato e fratelli nello stesso istituto.
 
 Uso: manage.py shell < demo_data.py   (EDUWISP_DEMO_RESET=1 per ricreare tutto)
 Idempotente: se l'istituto di esempio esiste già non cambia nulla.
@@ -21,6 +23,8 @@ from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy
 from eduwisp_devices.secrets import hash_secret, new_secret
 from eduwisp_school.models import (
     AssignmentKind,
+    Guardian,
+    GuardianKind,
     SchoolClass,
     SchoolLevel,
     SchoolYear,
@@ -76,16 +80,17 @@ User = get_user_model()
 usati = set()
 
 
-def persona():
-    while True:
-        nome, cognome = rnd.choice(NOMI), rnd.choice(COGNOMI)
-        if (nome, cognome) not in usati:
-            usati.add((nome, cognome))
-            return nome, cognome
+def persona(cognome=None):
+    for _ in range(1000):
+        nome, c = rnd.choice(NOMI), cognome or rnd.choice(COGNOMI)
+        if (nome, c) not in usati:
+            usati.add((nome, c))
+            return nome, c
+    return persona()  # cognome esaurito: se ne sceglie un altro
 
 
-def utente(ruolo_org, org, prefisso=""):
-    nome, cognome = persona()
+def utente(ruolo_org, org, prefisso="", cognome=None):
+    nome, cognome = persona(cognome)
     base = f"{prefisso}{nome}.{cognome}".lower().replace("'", "").replace(" ", "")
     user = User(
         username=base,
@@ -104,7 +109,9 @@ def elimina():
     if org is None:
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
-    for model in (DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy):
+    for model in (
+        Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy
+    ):
         model.objects.filter(organization=org).delete()
     for model in (SchoolClass, Student, Section, Track, SchoolYear, Site):
         model.objects.filter(organization=org).delete()
@@ -159,6 +166,48 @@ def crea():
             StudentEnrollment.objects.create(organization=org, student=studente, school_class=classe)
             iscritti[classe].append(studente)
 
+    # Famiglie (ADR-0018): sempre un referente, spesso un secondo familiare con accesso.
+    adesso = timezone.now()
+    studenti = [st for elenco in iscritti.values() for st in elenco]
+    rnd.shuffle(studenti)
+    fratelli = {}
+    for primo, secondo in zip(studenti[0:60:2], studenti[1:60:2]):  # 30 coppie di fratelli
+        cognome = primo.display_name.split(" ")[0]
+        secondo.display_name = f"{cognome} {secondo.display_name.split(' ', 1)[1]}"
+        secondo.save(update_fields=["display_name"])
+        fratelli[primo] = secondo
+    gia_collegati = set(fratelli.values())
+
+    def collega(persona_, figli, **campi):
+        for figlio in figli:
+            Guardian.objects.create(
+                organization=org, user=persona_, student=figlio,
+                verified_at=adesso - timedelta(days=rnd.randint(60, 400)), **campi,
+            )
+
+    for studente in studenti:
+        if studente in gia_collegati:
+            continue
+        figli = [studente] + ([fratelli[studente]] if studente in fratelli else [])
+        cognome = studente.display_name.split(" ")[0]
+        caso = rnd.choices(
+            ["due_genitori", "un_genitore", "tutore", "affidatario", "disattivato"],
+            weights=[65, 26, 4, 3, 2],
+        )[0]
+        if caso == "tutore":
+            collega(utente(Role.GUARDIAN, org, "fam."), figli, kind=GuardianKind.TUTORE,
+                    is_primary=True)
+            continue
+        if caso == "affidatario":
+            collega(utente(Role.GUARDIAN, org, "fam."), figli, kind=GuardianKind.AFFIDATARIO,
+                    is_primary=True)
+            continue
+        collega(utente(Role.GUARDIAN, org, "fam.", cognome), figli, is_primary=True)
+        if caso == "due_genitori":
+            collega(utente(Role.GUARDIAN, org, "fam."), figli)
+        elif caso == "disattivato":  # per esempio per un provvedimento: il motivo non si registra
+            collega(utente(Role.GUARDIAN, org, "fam."), figli, is_active=False)
+
     # Docenti e incarichi
     condivisi = {}
     for i, lettera in enumerate(SEZIONI):
@@ -205,7 +254,6 @@ def crea():
 
     # Dispositivi: tablet personali al biennio, un carrello per sezione al triennio
     DevicePolicy.objects.create(organization=org, camera_disabled=False, screen_capture_disabled=True)
-    adesso = timezone.now()
     numero = 0
 
     def tablet(classe, studente=None):
@@ -260,5 +308,6 @@ else:
         SchoolClass.objects.filter(organization=org).count(), "classi,",
         Student.objects.filter(organization=org).count(), "studenti,",
         Membership.objects.filter(organization=org, role=Role.TEACHER).count(), "docenti,",
+        Membership.objects.filter(organization=org, role=Role.GUARDIAN).count(), "familiari,",
         Device.objects.filter(organization=org).count(), "dispositivi",
     )
