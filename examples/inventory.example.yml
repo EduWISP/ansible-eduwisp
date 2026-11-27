@@ -14,3 +14,5 @@ all:
     eduwisp_ids_home_net: "[192.0.2.10/32]"
     eduwisp_tls_certificate: /etc/letsencrypt/live/eduwisp.scuola.example/fullchain.pem
     eduwisp_tls_certificate_key: /etc/letsencrypt/live/eduwisp.scuola.example/privkey.pem
+    # Backup sul server dedicato (ansible-eduwisp-backup, ADR-0017)
+    eduwisp_backup_repo: "ssh://borg@backup.scuola.example:22/srv/borg/repos/eduwisp.scuola.example"
