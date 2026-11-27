@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Coda dei messaggi (Valkey) e attività in background (Celery), ADR-0016.
+---
+- name: Valkey
+  ansible.builtin.apt:
+    name: valkey-server
+    state: present
+    install_recommends: false
+
+- name: Legge la password di Valkey
+  ansible.builtin.slurp:
+    src: /etc/eduwisp/valkey_password
+  register: eduwisp_valkey_password
+  no_log: true
+
+- name: Valkey solo su socket Unix, con password e persistenza
+  ansible.builtin.lineinfile:
+    path: /etc/valkey/valkey.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^#?\s*port\s', line: "port 0" }
+    - { regexp: '^#?\s*bind\s', line: "bind 127.0.0.1 -::1" }
+    - { regexp: '^#?\s*unixsocket\s', line: "unixsocket /run/valkey/valkey-server.sock" }
+    - { regexp: '^#?\s*unixsocketperm\s', line: "unixsocketperm 770" }
+    - { regexp: '^#?\s*requirepass\s', line: "requirepass {{ eduwisp_valkey_password.content | b64decode | trim }}" }
+    - { regexp: '^#?\s*appendonly\s', line: "appendonly yes" }
+  no_log: true
+  notify: Riavvia valkey
+
+- name: Configurazione di Valkey leggibile solo da Valkey
+  ansible.builtin.file:
+    path: /etc/valkey/valkey.conf
+    owner: valkey
+    group: valkey
+    mode: "0640"
+
+- name: L'utente EduWISP può usare il socket di Valkey
+  ansible.builtin.user:
+    name: "{{ eduwisp_user }}"
+    groups: valkey
+    append: true
+  notify: [Riavvia eduwisp-worker, Riavvia eduwisp-beat]
+
+- name: Valkey attivo
+  ansible.builtin.systemd_service:
+    name: valkey-server
+    enabled: true
+    state: started
+
+- name: Applica subito la configurazione di Valkey
+  ansible.builtin.meta: flush_handlers
+
+- name: Servizi Celery (worker e beat), isolati
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    mode: "0644"
+  loop: [eduwisp-worker, eduwisp-beat]
+  notify: [Ricarica systemd, Riavvia eduwisp-worker, Riavvia eduwisp-beat]
+
+- name: Celery worker e beat attivi
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: [eduwisp-worker, eduwisp-beat]

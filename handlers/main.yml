@@ -1,0 +1,60 @@
+---
+- name: Ricarica systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Riavvia ssh
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: restarted
+
+- name: Ricarica nftables
+  ansible.builtin.systemd_service:
+    name: nftables
+    state: restarted
+
+- name: Riavvia fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    state: restarted
+
+- name: Riavvia suricata
+  ansible.builtin.systemd_service:
+    name: suricata
+    state: restarted
+
+- name: Riavvia auditd
+  ansible.builtin.command: augenrules --load
+  changed_when: true
+
+- name: Riavvia eduwisp
+  ansible.builtin.systemd_service:
+    name: eduwisp
+    state: restarted
+
+- name: Ricarica nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: reloaded
+
+- name: Riavvia valkey
+  ansible.builtin.systemd_service:
+    name: valkey-server
+    state: restarted
+
+- name: Riavvia eduwisp-worker
+  ansible.builtin.systemd_service:
+    name: eduwisp-worker
+    state: restarted
+  failed_when: false
+
+- name: Riavvia eduwisp-beat
+  ansible.builtin.systemd_service:
+    name: eduwisp-beat
+    state: restarted
+  failed_when: false
+
+- name: Ricarica monit
+  ansible.builtin.systemd_service:
+    name: monit
+    state: reloaded

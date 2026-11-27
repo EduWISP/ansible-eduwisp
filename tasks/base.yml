@@ -1,0 +1,35 @@
+---
+- name: Pacchetti di base
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - python3-venv
+      - git
+      - acl
+      - postgresql
+      - python3-psycopg2
+      - nginx
+      - nftables
+      - fail2ban
+      - unattended-upgrades
+      - apt-listchanges
+      - needrestart
+      - auditd
+      - lynis
+    state: present
+
+- name: Aggiornamenti di sicurezza automatici
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+
+- name: Journal persistente
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    mode: "2755"

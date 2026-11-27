@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: eduwisp
+  author: Michele Salerno e i contributori di EduWISP
+  description: Installa e mette in sicurezza un server EduWISP su Debian 13
+  license: AGPL-3.0-or-later
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Debian
+      versions: [trixie]
+dependencies: []

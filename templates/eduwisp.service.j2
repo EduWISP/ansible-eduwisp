@@ -1,0 +1,43 @@
+# {{ ansible_managed }}
+[Unit]
+Description=EduWISP (gunicorn)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User={{ eduwisp_user }}
+Group={{ eduwisp_user }}
+RuntimeDirectory=eduwisp
+WorkingDirectory={{ eduwisp_home }}/project
+Environment=DJANGO_SETTINGS_MODULE=eduwisp_server.settings
+ExecStart={{ eduwisp_home }}/venv/bin/gunicorn eduwisp_server.wsgi:application --workers {{ eduwisp_gunicorn_workers }} --bind unix:/run/eduwisp/gunicorn.sock --umask 007 --no-control-socket --access-logfile - --forwarded-allow-ips="*"
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+
+# Isolamento
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+ReadOnlyPaths={{ eduwisp_home }}
+ReadWritePaths=/run/eduwisp
+
+[Install]
+WantedBy=multi-user.target

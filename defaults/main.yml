@@ -1,0 +1,114 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Nomi a dominio serviti (il primo è quello principale).
+eduwisp_domains:
+  - demo.example.org
+# Avviso mostrato su ogni pagina; vuoto in produzione (ADR-0015).
+eduwisp_environment_notice: ""
+
+# Moduli EduWISP da installare (repository e versione).
+eduwisp_modules:
+  - { name: eduwisp-protocol, version: main }
+  - { name: eduwisp-users, version: main }
+  - { name: eduwisp-school, version: main }
+  - { name: eduwisp-devices, version: main }
+eduwisp_django_requirement: "Django>=5.2,<5.3"
+
+eduwisp_user: eduwisp
+eduwisp_home: /opt/eduwisp
+eduwisp_db_name: eduwisp
+eduwisp_gunicorn_workers: 3
+eduwisp_celery_concurrency: 2
+eduwisp_poll_interval_seconds: 900
+
+# DPC Android (contenuto del QR code di provisioning).
+eduwisp_android_dpc:
+  component_name: org.eduwisp.dpc/.EduWispAdminReceiver
+  download_url: "https://{{ eduwisp_domains[0] }}/dpc/eduwisp-dpc.apk"
+  signature_checksum: ""
+
+# TLS: il certificato è fornito dall'esterno (per esempio ACME via DNS con un altro ruolo).
+# Se i file esistono, nginx serve HTTPS; altrimenti solo HTTP con /admin/ limitato alle reti locali.
+eduwisp_tls_certificate: "/etc/letsencrypt/live/{{ eduwisp_domains[0] }}/fullchain.pem"
+eduwisp_tls_certificate_key: "/etc/letsencrypt/live/{{ eduwisp_domains[0] }}/privkey.pem"
+
+# Sicurezza.
+eduwisp_ssh_port: 22
+eduwisp_ssh_allow_users: []
+eduwisp_admin_networks: []          # reti da cui è raggiungibile /admin/ quando TLS non è attivo
+eduwisp_firewall_enabled: true
+eduwisp_ids_enabled: true
+eduwisp_ids_interface: "{{ ansible_default_ipv4.interface }}"
+eduwisp_ids_home_net: "[{{ ansible_default_ipv4.address }}/32]"
+eduwisp_fail2ban_ignoreip: []
+eduwisp_aide_enabled: true
+
+# Parametri del kernel e della rete (accept_ra resta attivo: IPv6 arriva dai Router Advertisement).
+eduwisp_sysctl:
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  kernel.unprivileged_bpf_disabled: 1
+  net.core.bpf_jit_harden: 2
+  kernel.yama.ptrace_scope: 1
+  kernel.kexec_load_disabled: 1
+  kernel.sysrq: 0
+  fs.protected_hardlinks: 1
+  fs.protected_symlinks: 1
+  fs.protected_fifos: 2
+  fs.protected_regular: 2
+  fs.suid_dumpable: 0
+  net.ipv4.tcp_syncookies: 1
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.secure_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv6.conf.default.accept_redirects: 0
+  net.ipv6.conf.all.accept_source_route: 0
+
+# Backup con BorgBackup (ADR-0016).
+eduwisp_backup_enabled: true
+# Archivio: percorso locale oppure remoto via SSH, per esempio
+# "ssh://borg@backup.example.org:22/./eduwisp". Va tenuto FUORI dal server:
+# un archivio locale protegge solo da errori, non da guasti del disco o attacchi.
+eduwisp_backup_repo: /var/backups/eduwisp/borg
+eduwisp_backup_time: "*-*-* 02:30:00"
+eduwisp_backup_verify_time: "*-*-01 04:30:00"
+eduwisp_backup_keep_daily: 7
+eduwisp_backup_keep_weekly: 4
+eduwisp_backup_keep_monthly: 6
+eduwisp_backup_databases: ["{{ eduwisp_db_name }}"]
+eduwisp_backup_paths: [/etc/eduwisp, /etc/nginx, /etc/valkey, /etc/nftables.conf, /etc/fail2ban/jail.d, /etc/ssh/sshd_config.d]
+
+# Avvisi e monitoraggio (ADR-0016).
+eduwisp_alert_email: ""                 # destinatario degli avvisi; vuoto = avvisi disattivati
+eduwisp_smtp_host: ""
+eduwisp_smtp_port: 587
+eduwisp_smtp_user: ""
+eduwisp_smtp_password: ""               # dal vault
+eduwisp_smtp_from: "{{ eduwisp_smtp_user }}"
+eduwisp_monit_disk_limit: 80            # percentuale
+eduwisp_monit_memory_limit: 85
+eduwisp_report_time: "*-*-* 07:00:00"
+
+# Amministratore di EduWISP gestito da Ansible (facoltativo). La password va nel vault.
+eduwisp_admin_user: ""
+eduwisp_admin_email: ""
+eduwisp_admin_password: ""
+
+# Limiti di richieste (nginx) e conservazione dei log (ADR-0016).
+# La registrazione è tollerante: una scuola dietro NAT registra molti tablet dallo stesso IP.
+eduwisp_ratelimit_enroll: 60r/m
+eduwisp_ratelimit_enroll_burst: 60
+eduwisp_ratelimit_login: 10r/m
+eduwisp_ratelimit_login_burst: 10
+eduwisp_log_retention_days: 90
+eduwisp_suricata_log_days: 30

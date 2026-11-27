@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+---
+- name: Controlla il sistema operativo
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Debian"
+      - ansible_distribution_major_version == "13"
+    fail_msg: EduWISP richiede Debian 13 (ADR-0004).
+
+- ansible.builtin.import_tasks: base.yml
+  tags: [base]
+- ansible.builtin.import_tasks: hardening.yml
+  tags: [hardening]
+- ansible.builtin.import_tasks: firewall.yml
+  tags: [firewall]
+  when: eduwisp_firewall_enabled
+- ansible.builtin.import_tasks: ids.yml
+  tags: [ids]
+  when: eduwisp_ids_enabled
+- ansible.builtin.import_tasks: logs.yml
+  tags: [logs, hardening]
+- ansible.builtin.import_tasks: database.yml
+  tags: [database]
+- ansible.builtin.import_tasks: app.yml
+  tags: [app]
+- ansible.builtin.import_tasks: queue.yml
+  tags: [queue, app]
+- ansible.builtin.import_tasks: web.yml
+  tags: [web]
+- ansible.builtin.import_tasks: backup.yml
+  tags: [backup]
+  when: eduwisp_backup_enabled
+- ansible.builtin.import_tasks: monitoring.yml
+  tags: [monitoring]

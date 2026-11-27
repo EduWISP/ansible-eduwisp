@@ -1,0 +1,38 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Riepilogo quotidiano di sicurezza e stato (ADR-0016).
+set -uo pipefail
+DA=$(date -d '24 hours ago' --iso-8601=seconds)
+{
+  echo "Riepilogo di {{ ansible_fqdn }} — $(date '+%d/%m/%Y %H:%M')"
+  echo
+  echo "== Allarmi Suricata nelle ultime 24 ore (più frequenti)"
+  if [ -s /var/log/suricata/eve.json ]; then
+    jq -r --arg da "$DA" 'select(.event_type=="alert" and .timestamp >= $da) | "\(.alert.severity) \(.alert.signature)"' /var/log/suricata/eve.json \
+      | sort | uniq -c | sort -rn | head -15
+    echo "Totale: $(jq -r --arg da "$DA" 'select(.event_type=="alert" and .timestamp >= $da) | 1' /var/log/suricata/eve.json | wc -l)"
+  else
+    echo "nessun dato"
+  fi
+  echo
+  echo "== fail2ban"
+  for j in $(fail2ban-client status | sed -n 's/.*Jail list:\s*//p' | tr ',' ' '); do
+    echo "$j: $(fail2ban-client status "$j" | sed -n 's/.*Currently banned:\s*//p') bannati ora, $(fail2ban-client status "$j" | sed -n 's/.*Total banned:\s*//p') in totale"
+  done
+  echo
+  echo "== Backup"
+  for u in eduwisp-backup eduwisp-backup-verify; do
+    echo "$u: $(systemctl show "$u" -p Result --value) (ultimo avvio: $(systemctl show "$u" -p ExecMainStartTimestamp --value))"
+  done
+  echo
+  echo "== Certificato TLS"
+  FINE=$(openssl x509 -enddate -noout -in {{ eduwisp_tls_certificate | quote }} 2>/dev/null | cut -d= -f2)
+  [ -n "$FINE" ] && echo "scade il $FINE ($(( ( $(date -d "$FINE" +%s) - $(date +%s) ) / 86400 )) giorni)" || echo "non presente"
+  echo
+  echo "== Sistema"
+  df -h / | tail -1 | awk '{print "disco: "$5" usato ("$4" liberi)"}'
+  free -h | awk '/Mem:/{print "memoria: "$3" usati su "$2}'
+  echo "aggiornamenti in sospeso: $(apt list --upgradable 2>/dev/null | grep -c upgradable)"
+  [ -f /var/run/reboot-required ] && echo "RIAVVIO NECESSARIO"
+  needrestart -b 2>/dev/null | grep -E "NEEDRESTART-(KSTA|SVC)" | head -10
+} | mail -s "[EduWISP {{ ansible_fqdn }}] riepilogo quotidiano" {{ eduwisp_alert_email | quote }}

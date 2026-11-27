@@ -1,0 +1,31 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Prova di ripristino: ripristina l'ultimo backup in un database temporaneo e lo controlla.
+set -euo pipefail
+umask 077
+
+export BORG_REPO={{ eduwisp_backup_repo | quote }}
+export BORG_PASSCOMMAND="cat /etc/eduwisp/borg_passphrase"
+export BORG_RSH="ssh -i /root/.ssh/eduwisp_backup -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+PROVA=eduwisp_prova_ripristino
+CARTELLA=$(mktemp -d /var/backups/eduwisp/verifica.XXXXXX)
+pulizia() { runuser -u postgres -- dropdb --if-exists "$PROVA" || true; rm -rf "$CARTELLA"; }
+trap pulizia EXIT
+
+echo "== controllo dell'archivio"
+borg check --archives-only --last 1
+
+ULTIMO=$(borg list --short --last 1)
+[ -n "$ULTIMO" ] || { echo "ERRORE: nessun backup nell'archivio" >&2; exit 1; }
+echo "== ripristino di $ULTIMO"
+cd "$CARTELLA"
+borg extract "::$ULTIMO" var/backups/eduwisp/dump
+
+runuser -u postgres -- dropdb --if-exists "$PROVA"
+runuser -u postgres -- createdb "$PROVA"
+# Il file resta leggibile solo da root: pg_restore lo riceve dallo standard input.
+runuser -u postgres -- pg_restore --no-owner --exit-on-error -d "$PROVA" < "$CARTELLA/var/backups/eduwisp/dump/{{ eduwisp_db_name }}.dump"
+
+MIGRAZIONI=$(runuser -u postgres -- psql -tA -d "$PROVA" -c "SELECT count(*) FROM django_migrations")
+[ "$MIGRAZIONI" -gt 0 ] || { echo "ERRORE: database ripristinato vuoto" >&2; exit 1; }
+echo "ripristino riuscito: $ULTIMO ($MIGRAZIONI migrazioni)"

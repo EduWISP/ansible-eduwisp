@@ -1,0 +1,105 @@
+---
+- name: Pacchetti IDS
+  ansible.builtin.apt:
+    name: [suricata, suricata-update, jq]
+    state: present
+
+- name: Suricata in ascolto sull'interfaccia pubblica (af-packet)
+  ansible.builtin.copy:
+    dest: /etc/default/suricata
+    mode: "0644"
+    content: |
+      RUN=yes
+      SURCONF=/etc/suricata/suricata.yaml
+      LISTENMODE=af-packet
+      IFACE={{ eduwisp_ids_interface }}
+      PIDFILE=/var/run/suricata.pid
+  notify: Riavvia suricata
+
+- name: Rete protetta (HOME_NET)
+  ansible.builtin.lineinfile:
+    path: /etc/suricata/suricata.yaml
+    regexp: '^(\s+)HOME_NET:'
+    line: '    HOME_NET: "{{ eduwisp_ids_home_net }}"'
+    backrefs: false
+  notify: Riavvia suricata
+
+- name: Interfaccia af-packet in suricata.yaml
+  ansible.builtin.replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: '^(af-packet:\n\s+- interface: )\S+'
+    replace: '\g<1>{{ eduwisp_ids_interface }}'
+  notify: Riavvia suricata
+
+- name: Regole ET Open
+  ansible.builtin.command: suricata-update --no-test
+  args:
+    creates: /var/lib/suricata/rules/suricata.rules
+  notify: Riavvia suricata
+
+- name: Usa le regole scaricate da suricata-update
+  ansible.builtin.replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: '^default-rule-path: .*$'
+    replace: 'default-rule-path: /var/lib/suricata/rules'
+  notify: Riavvia suricata
+
+- name: Elenco delle regole
+  ansible.builtin.replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: '(?s)^rule-files:\n(  - .*?\n)+'
+    replace: "rule-files:\n  - suricata.rules\n"
+  notify: Riavvia suricata
+
+- name: Aggiornamento quotidiano delle regole
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    mode: "0644"
+    content: "{{ item.content }}"
+  loop:
+    - name: suricata-update.service
+      content: |
+        [Unit]
+        Description=Aggiorna le regole di Suricata
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/suricata-update --no-test
+        ExecStartPost=/bin/systemctl reload-or-restart suricata
+    - name: suricata-update.timer
+      content: |
+        [Unit]
+        Description=Aggiornamento quotidiano delle regole di Suricata
+        [Timer]
+        OnCalendar=daily
+        RandomizedDelaySec=1h
+        Persistent=true
+        [Install]
+        WantedBy=timers.target
+  notify: Ricarica systemd
+
+- name: Timer delle regole attivo
+  ansible.builtin.systemd_service:
+    name: suricata-update.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Suricata attivo
+  ansible.builtin.systemd_service:
+    name: suricata
+    enabled: true
+    state: started
+
+- name: AIDE (integrità dei file)
+  when: eduwisp_aide_enabled
+  block:
+    - name: Pacchetto AIDE
+      ansible.builtin.apt:
+        name: aide
+        state: present
+    - name: Database iniziale di AIDE
+      ansible.builtin.command: aideinit -y -f
+      args:
+        creates: /var/lib/aide/aide.db
+      async: 1800
+      poll: 15

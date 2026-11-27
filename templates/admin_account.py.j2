@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+# Crea o aggiorna l'amministratore di EduWISP. Stampa "invariato", "creato" o "aggiornato".
+import os
+import sys
+
+from django.contrib.auth import get_user_model
+
+nome = os.environ["EDUWISP_ADMIN_USER"]
+email = os.environ["EDUWISP_ADMIN_EMAIL"]
+password = os.environ["EDUWISP_ADMIN_PASSWORD"]
+if len(password) < 12:
+    sys.exit("La password dell'amministratore deve avere almeno 12 caratteri.")
+
+Utente = get_user_model()
+utente = Utente.objects.filter(username=nome).first()
+if utente is None:
+    Utente.objects.create_superuser(nome, email, password)
+    print("creato")
+elif not (utente.check_password(password) and utente.email == email and utente.is_superuser):
+    utente.set_password(password)
+    utente.email = email
+    utente.is_staff = utente.is_superuser = True
+    utente.save()
+    print("aggiornato")
+else:
+    print("invariato")

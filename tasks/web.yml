@@ -1,0 +1,74 @@
+---
+- name: Certificato TLS presente?
+  ansible.builtin.stat:
+    path: "{{ eduwisp_tls_certificate }}"
+  register: eduwisp_cert
+
+- name: Avviso se TLS non è attivo
+  ansible.builtin.debug:
+    msg: >-
+      Certificato non trovato in {{ eduwisp_tls_certificate }}: nginx serve solo HTTP
+      e /admin/ è raggiungibile solo da {{ eduwisp_admin_networks | join(', ') or 'nessuna rete' }}.
+  when: not eduwisp_cert.stat.exists
+
+- name: nginx può usare il socket di EduWISP
+  ansible.builtin.user:
+    name: www-data
+    groups: "{{ eduwisp_user }}"
+    append: true
+  register: eduwisp_nginx_group
+
+- name: Riavvia nginx per il nuovo gruppo
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: restarted
+  when: eduwisp_nginx_group.changed
+
+- name: Sito nginx
+  ansible.builtin.template:
+    src: nginx-eduwisp.conf.j2
+    dest: /etc/nginx/sites-available/eduwisp.conf
+    mode: "0644"
+  vars:
+    eduwisp_tls: "{{ eduwisp_cert.stat.exists }}"
+  notify: Ricarica nginx
+
+- name: Abilita il sito e disabilita quello predefinito
+  ansible.builtin.file:
+    src: "{{ item.src | default(omit) }}"
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+  loop:
+    - { src: /etc/nginx/sites-available/eduwisp.conf, path: /etc/nginx/sites-enabled/eduwisp.conf, state: link }
+    - { path: /etc/nginx/sites-enabled/default, state: absent }
+  notify: Ricarica nginx
+
+- name: Nasconde la versione di nginx
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^\s*#?\s*server_tokens\s'
+    line: "\tserver_tokens off;"
+    insertafter: '^http \{'
+  notify: Ricarica nginx
+
+- name: Limiti di dimensione e di frequenza delle richieste
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/eduwisp-security.conf
+    mode: "0644"
+    content: |
+      # Gestito da Ansible (ansible-eduwisp)
+      client_max_body_size 10m;
+      limit_req_zone $binary_remote_addr zone=eduwisp_enroll:10m rate={{ eduwisp_ratelimit_enroll }};
+      limit_req_zone $binary_remote_addr zone=eduwisp_login:10m rate={{ eduwisp_ratelimit_login }};
+      limit_req_status 429;
+  notify: Ricarica nginx
+
+- name: Verifica la configurazione di nginx
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: nginx attivo
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started

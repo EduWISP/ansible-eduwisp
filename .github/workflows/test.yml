@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible-eduwisp
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install "ansible-core>=2.19,<2.20" yamllint
+      - run: ansible-galaxy collection install -r ansible-eduwisp/requirements.yml
+      - run: yamllint -d relaxed ansible-eduwisp
+      - name: Controllo della sintassi
+        run: ANSIBLE_ROLES_PATH=$PWD ansible-playbook -i ansible-eduwisp/examples/inventory.example.yml ansible-eduwisp/examples/playbook.yml --syntax-check

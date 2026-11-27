@@ -1,0 +1,157 @@
+---
+- name: Cartelle dell'applicazione
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(eduwisp_user) }}"
+    group: "{{ eduwisp_user }}"
+    mode: "{{ item.mode | default('0750') }}"
+  loop:
+    - { path: "{{ eduwisp_home }}" }
+    - { path: "{{ eduwisp_home }}/project" , owner: root }
+    - { path: "{{ eduwisp_home }}/project/eduwisp_server", owner: root }
+    - { path: "{{ eduwisp_home }}/static", owner: root, mode: "0755" }
+    - { path: /etc/eduwisp, owner: root }
+    - { path: /var/lib/eduwisp, mode: "0750" }
+
+- name: Chiave segreta di Django (generata una sola volta sul server)
+  ansible.builtin.shell: |
+    umask 027
+    python3 -c 'import secrets; print(secrets.token_urlsafe(64))' > /etc/eduwisp/secret_key
+  args:
+    creates: /etc/eduwisp/secret_key
+
+- name: Permessi della chiave segreta
+  ansible.builtin.file:
+    path: /etc/eduwisp/secret_key
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "0640"
+
+- name: Password di Valkey (generata una sola volta sul server)
+  ansible.builtin.shell: |
+    umask 027
+    python3 -c 'import secrets; print(secrets.token_urlsafe(48))' > /etc/eduwisp/valkey_password
+  args:
+    creates: /etc/eduwisp/valkey_password
+
+- name: Permessi della password di Valkey
+  ansible.builtin.file:
+    path: /etc/eduwisp/valkey_password
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "0640"
+
+- name: Ambiente virtuale e dipendenze
+  ansible.builtin.pip:
+    name:
+      - "{{ eduwisp_django_requirement }}"
+      - gunicorn
+      - "psycopg[binary]"
+      - "celery[redis]>=5.5,<6"
+      - packaging
+      - "redis>=5"
+    virtualenv: "{{ eduwisp_home }}/venv"
+    virtualenv_command: python3 -m venv
+  notify: Riavvia eduwisp
+
+- name: Moduli EduWISP
+  ansible.builtin.pip:
+    name: "git+https://github.com/EduWISP/{{ item.name }}@{{ item.version }}"
+    virtualenv: "{{ eduwisp_home }}/venv"
+    state: forcereinstall
+    extra_args: --no-deps
+  loop: "{{ eduwisp_modules }}"
+  register: eduwisp_moduli
+  changed_when: false
+
+- name: Dipendenze dei moduli
+  ansible.builtin.pip:
+    name: "git+https://github.com/EduWISP/{{ item.name }}@{{ item.version }}"
+    virtualenv: "{{ eduwisp_home }}/venv"
+  loop: "{{ eduwisp_modules }}"
+
+- name: Certificato TLS presente?
+  ansible.builtin.stat:
+    path: "{{ eduwisp_tls_certificate }}"
+  register: eduwisp_cert_app
+
+- name: Progetto Django
+  vars:
+    eduwisp_tls: "{{ eduwisp_cert_app.stat.exists }}"
+  ansible.builtin.template:
+    src: "project/{{ item.src }}"
+    dest: "{{ eduwisp_home }}/project/{{ item.dest }}"
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "{{ item.mode | default('0640') }}"
+  loop:
+    - { src: manage.py.j2, dest: manage.py, mode: "0750" }
+    - { src: __init__.py.j2, dest: eduwisp_server/__init__.py }
+    - { src: settings.py.j2, dest: eduwisp_server/settings.py }
+    - { src: urls.py.j2, dest: eduwisp_server/urls.py }
+    - { src: wsgi.py.j2, dest: eduwisp_server/wsgi.py }
+    - { src: celery.py.j2, dest: eduwisp_server/celery.py }
+  notify: [Riavvia eduwisp, Riavvia eduwisp-worker, Riavvia eduwisp-beat]
+
+- name: Migrazioni del database
+  become: true
+  become_user: "{{ eduwisp_user }}"
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py migrate --noinput"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  register: eduwisp_migrate
+  changed_when: "'No migrations to apply' not in eduwisp_migrate.stdout"
+
+- name: File statici
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py collectstatic --noinput"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  register: eduwisp_static
+  changed_when: eduwisp_static.stdout is not search('(^|\\s)0 static files copied', multiline=True)
+
+- name: Servizio systemd (con isolamento)
+  ansible.builtin.template:
+    src: eduwisp.service.j2
+    dest: /etc/systemd/system/eduwisp.service
+    mode: "0644"
+  notify: [Ricarica systemd, Riavvia eduwisp]
+
+- name: Servizio EduWISP attivo
+  ansible.builtin.systemd_service:
+    name: eduwisp
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Regole di audit per i file di EduWISP
+  ansible.builtin.template:
+    src: audit-eduwisp-app.rules.j2
+    dest: /etc/audit/rules.d/60-eduwisp-app.rules
+    mode: "0640"
+  notify: Riavvia auditd
+
+- name: Amministratore di EduWISP (dal vault)
+  when: eduwisp_admin_user | length > 0 and eduwisp_admin_password | length > 0
+  block:
+    - name: Script di gestione dell'amministratore
+      ansible.builtin.template:
+        src: admin_account.py.j2
+        dest: "{{ eduwisp_home }}/project/admin_account.py"
+        owner: root
+        group: "{{ eduwisp_user }}"
+        mode: "0640"
+
+    - name: Crea o aggiorna l'amministratore
+      become: true
+      become_user: "{{ eduwisp_user }}"
+      ansible.builtin.shell: "{{ eduwisp_home }}/venv/bin/python manage.py shell < admin_account.py"
+      args:
+        chdir: "{{ eduwisp_home }}/project"
+      environment:
+        EDUWISP_ADMIN_USER: "{{ eduwisp_admin_user }}"
+        EDUWISP_ADMIN_EMAIL: "{{ eduwisp_admin_email }}"
+        EDUWISP_ADMIN_PASSWORD: "{{ eduwisp_admin_password }}"
+      register: eduwisp_admin_result
+      changed_when: "'invariato' not in eduwisp_admin_result.stdout"
+      no_log: true
