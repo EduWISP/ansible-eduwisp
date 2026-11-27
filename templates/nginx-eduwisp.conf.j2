@@ -51,6 +51,20 @@ upstream eduwisp_app {
         alias {{ eduwisp_home }}/static/;
         expires 7d;
     }
+{% if eduwisp_apps %}
+    # Solo i loghi delle app (ADR-0020); gli APK stanno altrove e passano dall'applicazione.
+    location ~* ^/media/app/icone/[^/]+\.(png|webp|jpe?g)$ {
+        root {{ eduwisp_home }};
+        expires 7d;
+    }
+    location /media/ { return 404; }
+    # Caricamento degli APK nel catalogo dell'amministrazione.
+    location /admin/eduwisp_apps/ {
+        client_max_body_size 310m;
+{{ reti_admin }}
+{{ proxy }}
+    }
+{% endif %}
     # Registrazione dei dispositivi: limite tollerante (scuole dietro NAT).
     location = /api/protocol/v0/enroll {
         limit_req zone=eduwisp_enroll burst={{ eduwisp_ratelimit_enroll_burst }} nodelay;

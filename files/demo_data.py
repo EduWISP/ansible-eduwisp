@@ -25,7 +25,7 @@ from django.utils import timezone
 from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy, EnrollmentToken
 from django.contrib.auth.models import Group
 try:  # app consentite dal rilascio 0.5.0 (ADR-0019)
-    from eduwisp_apps.models import App, AppPolicyState, AppRule, RequiredApp, TemporaryUnlock
+    from eduwisp_apps.models import App, AppPolicyState, AppRule, TemporaryUnlock
 except ImportError:
     App = None
 from eduwisp_devices.secrets import hash_secret, new_secret
@@ -118,7 +118,7 @@ def elimina():
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
     if App is not None:
-        for model in (TemporaryUnlock, RequiredApp, AppRule, App, AppPolicyState):
+        for model in (TemporaryUnlock, AppRule, App, AppPolicyState):
             model.objects.filter(organization=org).delete()
     for model in (
         Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy,
@@ -351,8 +351,10 @@ def catalogo_app(org, ordinamento, applicate):
             AppRule.objects.create(organization=org, app=app)
         elif ambito == "applicate":
             AppRule.objects.create(organization=org, app=app, track=applicate)
+    # Elenco unico (ADR-0020): le obbligatorie sono app consentite con la spunta.
     for nome, pacchetto in OBBLIGATORIE:
-        RequiredApp.objects.create(organization=org, name=nome, identifier=pacchetto)
+        app = App.objects.create(organization=org, name=nome, identifier=pacchetto)
+        AppRule.objects.create(organization=org, app=app, required=True)
     AppPolicyState.objects.update_or_create(organization=org, defaults={"allowlist_enabled": True})
 
 

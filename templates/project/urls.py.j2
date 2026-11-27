@@ -12,6 +12,9 @@ urlpatterns = [
 {% if eduwisp_health %}
     path("", include("eduwisp_utils.urls")),
 {% endif %}
+{% if eduwisp_apps %}
+    path("", include("eduwisp_apps.urls")),
+{% endif %}
 {% if eduwisp_portal %}
     path("", include("eduwisp_portal.urls")),
 {% endif %}

@@ -82,6 +82,14 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = "{{ eduwisp_home }}/static"
+{% if eduwisp_apps %}
+# Loghi delle app (pubblici) e APK (privati, scaricabili solo dai dispositivi), ADR-0020.
+MEDIA_URL = "media/"
+MEDIA_ROOT = "{{ eduwisp_home }}/media"
+EDUWISP_PRIVATE_MEDIA_ROOT = "/var/lib/eduwisp/privato"
+FILE_UPLOAD_PERMISSIONS = 0o640
+EDUWISP_PUBLIC_URL = "{{ 'https' if eduwisp_tls | default(false) else 'http' }}://{{ eduwisp_domains[0] }}"
+{% endif %}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 {% if eduwisp_apps %}
 # App consentite nella policy dei dispositivi (ADR-0019).

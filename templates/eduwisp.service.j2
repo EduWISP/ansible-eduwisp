@@ -39,7 +39,7 @@ CapabilityBoundingSet=
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 ReadOnlyPaths={{ eduwisp_home }}
-ReadWritePaths=/run/eduwisp
+ReadWritePaths=/run/eduwisp {{ eduwisp_home }}/media /var/lib/eduwisp/privato
 
 [Install]
 WantedBy=multi-user.target

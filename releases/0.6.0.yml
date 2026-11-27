@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Rilascio 0.6.0 della piattaforma EduWISP: elenco unico con la spunta «obbligatoria», loghi e
+# installazione silenziosa degli APK (ADR-0020).
+# Ogni modulo è fissato a un commit preciso (ADR-0010, ADR-0016).
+eduwisp_platform_django: "Django>=5.2,<5.3"
+eduwisp_platform_modules:
+  - { name: eduwisp-utils, version: 9d4f0ddb591e9378cf5baf53f9e8bb700f62be1a }
+  - { name: eduwisp-protocol, version: 5fb2945bb9f63db9823b9a480ccd73d9eb8291a2 }
+  - { name: eduwisp-users, version: f26afd3f174a053b007fcd7bca0bfb44d19af5a9 }
+  - { name: eduwisp-audit, version: f041d402bef042c8482e496cb3b30af6e6bebc69 }
+  - { name: eduwisp-school, version: 2064e18e9cebc7ff7e0aa12b375d34e0401e7441 }
+  - { name: eduwisp-devices, version: 0b0cec76e1ed69406aac1486cd773be1d9b174e3 }
+  - { name: eduwisp-apps, version: a82ddf8c02535f34331a842ad60f030636d1dc7b }
+  - { name: eduwisp-portal, version: a013f930e1a56b83b7a3ba50fb16a85f8cbcf64f }
