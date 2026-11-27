@@ -6,6 +6,10 @@ eduwisp_domains:
   - demo.example.org
 # Avviso mostrato su ogni pagina; vuoto in produzione (ADR-0015).
 eduwisp_environment_notice: ""
+# Solo demo: carica un liceo scientifico di esempio con dati inventati (files/demo_data.py).
+# Richiede eduwisp_environment_notice. Con _reset i dati di esempio vengono ricreati da zero.
+eduwisp_demo_data: false
+eduwisp_demo_data_reset: false
 
 # Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
 eduwisp_platform_release: "0.2.0"

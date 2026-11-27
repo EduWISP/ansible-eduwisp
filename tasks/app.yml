@@ -109,3 +109,38 @@
       register: eduwisp_admin_result
       changed_when: "'invariato' not in eduwisp_admin_result.stdout"
       no_log: true
+
+# Solo per l'ambiente demo (ADR-0015): dati inventati, mai in produzione.
+- name: Dati di esempio della demo
+  when: eduwisp_demo_data | bool
+  block:
+    - name: I dati di esempio sono ammessi solo in un ambiente di prova
+      ansible.builtin.assert:
+        that: eduwisp_environment_notice | length > 0
+        fail_msg: >-
+          eduwisp_demo_data richiede un ambiente di prova con eduwisp_environment_notice
+          impostato (ADR-0015): i dati di esempio non vanno mai in produzione.
+        quiet: true
+
+    - name: Script dei dati di esempio
+      ansible.builtin.copy:
+        src: demo_data.py
+        dest: "{{ eduwisp_home }}/project/demo_data.py"
+        owner: root
+        group: "{{ eduwisp_user }}"
+        mode: "0640"
+
+    - name: Carica i dati di esempio (solo se mancano)
+      become: true
+      become_user: "{{ eduwisp_user }}"
+      ansible.builtin.shell: "{{ eduwisp_home }}/venv/bin/python manage.py shell < demo_data.py"
+      args:
+        chdir: "{{ eduwisp_home }}/project"
+      environment:
+        EDUWISP_DEMO_RESET: "{{ '1' if eduwisp_demo_data_reset | bool else '0' }}"
+      register: eduwisp_demo_result
+      changed_when: "'invariati' not in eduwisp_demo_result.stdout"
+
+    - name: Esito dei dati di esempio
+      ansible.builtin.debug:
+        msg: "{{ eduwisp_demo_result.stdout_lines | last }}"

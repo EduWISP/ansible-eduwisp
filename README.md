@@ -57,6 +57,14 @@ eduwisp_admin_password: "{{ vault_admin_password }}"
 
 Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) vengono **generati sul server** alla prima installazione. Esporta subito chiave e passphrase di Borg e conservale fuori dal server: senza di esse i backup sono illeggibili.
 
+## Dati di esempio (solo demo) / Demo data
+
+Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato**: 6 sezioni (A-D ordinamento, E-F scienze applicate) per 5 anni, cioè 30 classi, circa 700 studenti, preside, amministratore IT, docenti con le discipline del liceo, coordinatori, sostegno, tablet personali per il biennio e un carrello condiviso per sezione. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
+
+Funziona solo se è impostato `eduwisp_environment_notice` (ambiente di prova, ADR-0015) e carica i dati una volta sola; `eduwisp_demo_data_reset: true` li ricrea da zero.
+
+🇬🇧 *`eduwisp_demo_data: true` loads a made-up scientific high school (6 sections × 5 years, ~700 students, teachers, devices). Test environments only; fully fictitious.*
+
 ## Aggiornamento / Upgrade
 
 Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`releases/`](releases/), ADR-0016): per ogni modulo, il commit esatto. Il ruolo installa i moduli **solo alla prima installazione**; se trova versioni diverse da quelle del rilascio si ferma, per non cambiare il database senza backup.
