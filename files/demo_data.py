@@ -34,6 +34,7 @@ except ImportError:
     AppRequest = None
 from eduwisp_devices.secrets import hash_secret, new_secret
 from eduwisp_school.models import (
+    ADULT_AGE,
     AssignmentKind,
     Guardian,
     GuardianKind,
@@ -46,6 +47,7 @@ from eduwisp_school.models import (
     StudentEnrollment,
     TeachingAssignment,
     Track,
+    born_by,
 )
 from eduwisp_users.models import Membership, Organization, Role
 
@@ -178,11 +180,16 @@ def crea():
         for _ in range(STUDENTI_PER_CLASSE[n - 1]):
             codice += 1
             nome, cognome = persona()
-            # Nati nel 2013 - n: maggiorenni nel 2031 - n (la quinta compie 18 anni nel 2026).
-            maggiorenne_dal = date(2031 - n, 1, 1) + timedelta(days=rnd.randint(0, 364))
+            # Nati nel 2013 - n (la quinta compie 18 anni nel 2026); circa uno su dieci ha
+            # ripetuto un anno ed è più grande dei compagni: l'età è di ognuno, non della classe.
+            ripetente = rnd.random() < 0.1
+            nascita = date(2013 - n - ripetente, 1, 1) + timedelta(days=rnd.randint(0, 364))
+            maggiorenne_dal = nascita.replace(year=nascita.year + 18) if not (
+                nascita.month == 2 and nascita.day == 29
+            ) else date(nascita.year + 18, 3, 1)
             studente = Student.objects.create(
                 organization=org, display_name=f"{cognome} {nome}", internal_code=f"S{codice:04d}",
-                adult_on=maggiorenne_dal,
+                birth_date=nascita,
             )
             if maggiorenne_dal <= date.today():
                 scelta = rnd.choices([True, False, None], weights=[55, 15, 30])[0]
@@ -375,7 +382,7 @@ def richieste_esempio(org):
             enrollments__school_class__section__name=sezione,
             enrollments__school_class__year_number=anno,
             guardians__is_primary=True,
-            adult_on__gt=date.today(),
+            birth_date__gt=born_by(date.today(), ADULT_AGE),
         ).distinct().order_by("display_name")
         return iscritti[salta]
 
@@ -440,7 +447,7 @@ else:
         Student.objects.filter(organization=org).count(), "studenti,",
         Membership.objects.filter(organization=org, role=Role.TEACHER).count(), "docenti,",
         Membership.objects.filter(organization=org, role=Role.GUARDIAN).count(), "familiari,",
-        Student.objects.filter(organization=org, adult_on__lte=date.today()).count(),
+        sum(s.is_adult() for s in Student.objects.filter(organization=org)),
         "maggiorenni,",
         Device.objects.filter(organization=org).count(), "dispositivi",
     )
