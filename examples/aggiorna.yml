@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Aggiornamento a un rilascio della piattaforma: un solo comando.
+#   ansible-playbook -i inventory.yml aggiorna.yml -e eduwisp_platform_release=0.1.0
+---
+- name: Aggiorna EduWISP
+  hosts: all
+  become: true
+  tasks:
+    - name: Procedura di aggiornamento con ripristino automatico
+      ansible.builtin.include_role:
+        name: ansible-eduwisp
+        tasks_from: upgrade.yml

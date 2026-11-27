@@ -42,73 +42,27 @@
     group: "{{ eduwisp_user }}"
     mode: "0640"
 
-- name: Ambiente virtuale e dipendenze
-  ansible.builtin.pip:
-    name:
-      - "{{ eduwisp_django_requirement }}"
-      - gunicorn
-      - "psycopg[binary]"
-      - "celery[redis]>=5.5,<6"
-      - packaging
-      - "redis>=5"
-    virtualenv: "{{ eduwisp_home }}/venv"
-    virtualenv_command: python3 -m venv
-  notify: Riavvia eduwisp
+- name: Versioni dei moduli
+  ansible.builtin.include_tasks: release.yml
 
-- name: Moduli EduWISP
-  ansible.builtin.pip:
-    name: "git+https://github.com/EduWISP/{{ item.name }}@{{ item.version }}"
-    virtualenv: "{{ eduwisp_home }}/venv"
-    state: forcereinstall
-    extra_args: --no-deps
-  loop: "{{ eduwisp_modules }}"
-  register: eduwisp_moduli
-  changed_when: false
+- name: Le versioni installate coincidono con il rilascio
+  ansible.builtin.assert:
+    that: eduwisp_prima_installazione or eduwisp_moduli_diversi | length == 0
+    fail_msg: >-
+      I moduli {{ eduwisp_moduli_diversi | join(', ') }} sono a una versione diversa da quella
+      richiesta (rilascio {{ eduwisp_platform_release }}). Per non cambiare il database senza backup,
+      il ruolo non li aggiorna: usa la procedura di aggiornamento (aggiorna.yml, vedi il README).
+    quiet: true
 
-- name: Dipendenze dei moduli
-  ansible.builtin.pip:
-    name: "git+https://github.com/EduWISP/{{ item.name }}@{{ item.version }}"
-    virtualenv: "{{ eduwisp_home }}/venv"
-  loop: "{{ eduwisp_modules }}"
+- name: Prima installazione dei moduli
+  ansible.builtin.include_tasks: moduli.yml
+  when: eduwisp_prima_installazione
 
-- name: Certificato TLS presente?
-  ansible.builtin.stat:
-    path: "{{ eduwisp_tls_certificate }}"
-  register: eduwisp_cert_app
+- name: Pagina di manutenzione
+  ansible.builtin.include_tasks: manutenzione.yml
 
-- name: Progetto Django
-  vars:
-    eduwisp_tls: "{{ eduwisp_cert_app.stat.exists }}"
-  ansible.builtin.template:
-    src: "project/{{ item.src }}"
-    dest: "{{ eduwisp_home }}/project/{{ item.dest }}"
-    owner: root
-    group: "{{ eduwisp_user }}"
-    mode: "{{ item.mode | default('0640') }}"
-  loop:
-    - { src: manage.py.j2, dest: manage.py, mode: "0750" }
-    - { src: __init__.py.j2, dest: eduwisp_server/__init__.py }
-    - { src: settings.py.j2, dest: eduwisp_server/settings.py }
-    - { src: urls.py.j2, dest: eduwisp_server/urls.py }
-    - { src: wsgi.py.j2, dest: eduwisp_server/wsgi.py }
-    - { src: celery.py.j2, dest: eduwisp_server/celery.py }
-  notify: [Riavvia eduwisp, Riavvia eduwisp-worker, Riavvia eduwisp-beat]
-
-- name: Migrazioni del database
-  become: true
-  become_user: "{{ eduwisp_user }}"
-  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py migrate --noinput"
-  args:
-    chdir: "{{ eduwisp_home }}/project"
-  register: eduwisp_migrate
-  changed_when: "'No migrations to apply' not in eduwisp_migrate.stdout"
-
-- name: File statici
-  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py collectstatic --noinput"
-  args:
-    chdir: "{{ eduwisp_home }}/project"
-  register: eduwisp_static
-  changed_when: eduwisp_static.stdout is not search('(^|\\s)0 static files copied', multiline=True)
+- name: Progetto, migrazioni e file statici
+  ansible.builtin.include_tasks: progetto.yml
 
 - name: Servizio systemd (con isolamento)
   ansible.builtin.template:

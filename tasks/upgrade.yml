@@ -1,0 +1,172 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Aggiornamento a un rilascio della piattaforma (ADR-0016), da aggiorna.yml.
+# Punto di ripristino → manutenzione → installazione → migrazioni → verifica.
+# Se un passo fallisce, ripristina ambiente Python, progetto e database e riattiva il servizio.
+
+- name: Versioni dei moduli
+  ansible.builtin.include_tasks: release.yml
+
+- name: Niente da installare
+  ansible.builtin.debug:
+    msg: "Il server è già al rilascio {{ eduwisp_platform_release }}: nessun modulo da aggiornare."
+  when: eduwisp_moduli_diversi | length == 0
+
+- name: Aggiornamento
+  when: eduwisp_moduli_diversi | length > 0
+  vars:
+    eduwisp_monit_applicazione:
+      - servizio-eduwisp
+      - servizio-eduwisp-worker
+      - servizio-eduwisp-beat
+      - "sito-{{ eduwisp_domains[0] }}"
+  block:
+    - name: Controlli preliminari
+      ansible.builtin.include_tasks: upgrade_controlli.yml
+
+    - name: Punto di ripristino
+      ansible.builtin.include_tasks: upgrade_ripristino_crea.yml
+
+    - name: Installazione con ripristino automatico in caso di errore
+      block:
+        - name: Sospende i controlli di Monit sull'applicazione (evita falsi allarmi)
+          ansible.builtin.command: "monit unmonitor {{ item }}"
+          loop: "{{ eduwisp_monit_applicazione }}"
+          changed_when: true
+          failed_when: false
+
+        - name: Attiva la pagina di manutenzione
+          ansible.builtin.file:
+            path: "{{ eduwisp_home }}/manutenzione/attiva"
+            state: touch
+            owner: root
+            group: "{{ eduwisp_user }}"
+            mode: "0640"
+
+        - name: Ferma l'applicazione e le attività in background
+          ansible.builtin.systemd_service:
+            name: "{{ item }}"
+            state: stopped
+          loop: [eduwisp-beat, eduwisp-worker, eduwisp]
+
+        - name: Installa i moduli del rilascio
+          ansible.builtin.include_tasks: moduli.yml
+
+        - name: Progetto, migrazioni e file statici
+          ansible.builtin.include_tasks: progetto.yml
+
+        - name: Controllo della configurazione di Django
+          become: true
+          become_user: "{{ eduwisp_user }}"
+          ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py check"
+          args:
+            chdir: "{{ eduwisp_home }}/project"
+          changed_when: false
+
+        - name: Errore simulato (solo per provare il ripristino)
+          ansible.builtin.fail:
+            msg: "Errore simulato dopo le migrazioni (eduwisp_upgrade_simulate_failure)."
+          when: eduwisp_upgrade_simulate_failure | bool
+
+        - name: Riavvia l'applicazione e le attività in background
+          ansible.builtin.systemd_service:
+            name: "{{ item }}"
+            state: restarted
+          loop: [eduwisp, eduwisp-worker, eduwisp-beat]
+
+        - name: Verifica del servizio
+          ansible.builtin.include_tasks: upgrade_verifica.yml
+
+      rescue:
+        - name: Passo fallito
+          ansible.builtin.set_fact:
+            eduwisp_passo_fallito: "{{ ansible_failed_task.name | default('?') }}"
+
+        - name: Errore durante l'aggiornamento
+          ansible.builtin.debug:
+            msg: "Passo fallito: {{ eduwisp_passo_fallito }}. Ripristino da {{ eduwisp_punto_ripristino }}."
+
+        - name: Ripristino dello stato precedente
+          ansible.builtin.include_tasks: upgrade_ripristino_applica.yml
+
+        - name: Verifica dopo il ripristino
+          block:
+            - name: Verifica del servizio ripristinato
+              ansible.builtin.include_tasks: upgrade_verifica.yml
+
+            - name: Servizio ripristinato
+              ansible.builtin.set_fact:
+                eduwisp_ripristino_ok: true
+          rescue:
+            - name: Servizio non ripristinato
+              ansible.builtin.set_fact:
+                eduwisp_ripristino_ok: false
+
+        - name: Disattiva la pagina di manutenzione (solo se il servizio funziona)
+          ansible.builtin.file:
+            path: "{{ eduwisp_home }}/manutenzione/attiva"
+            state: absent
+          when: eduwisp_ripristino_ok
+
+        - name: Avviso agli amministratori
+          vars:
+            esito: >-
+              {{ 'Il server è stato riportato allo stato precedente ed è di nuovo in servizio.'
+                 if eduwisp_ripristino_ok else
+                 'ATTENZIONE: il ripristino è stato eseguito ma la verifica non è riuscita; la pagina di manutenzione resta attiva. Serve un intervento manuale.' }}
+          ansible.builtin.shell: |
+            set -o pipefail
+            printf '%s\n' \
+              "L'aggiornamento di {{ ansible_fqdn }} al rilascio {{ eduwisp_platform_release }} non è riuscito." \
+              "Passo fallito: {{ eduwisp_passo_fallito }}" \
+              "" \
+              {{ esito | quote }} \
+              "Punto di ripristino: {{ eduwisp_punto_ripristino }}" \
+            | mail -s "[EduWISP {{ ansible_fqdn }}] Aggiornamento annullato" {{ eduwisp_alert_email | quote }}
+          args:
+            executable: /bin/bash
+          changed_when: true
+          failed_when: false
+          when: eduwisp_alert_email | length > 0 and eduwisp_smtp_host | length > 0
+
+        - name: Aggiornamento annullato
+          ansible.builtin.fail:
+            msg: >-
+              Aggiornamento al rilascio {{ eduwisp_platform_release }} non riuscito.
+              {{ 'Il server è stato riportato allo stato precedente ed è in servizio.' if eduwisp_ripristino_ok
+                 else 'Ripristino eseguito ma verifica fallita: manutenzione ancora attiva, serve un intervento manuale.' }}
+              Punto di ripristino: {{ eduwisp_punto_ripristino }}.
+
+      always:
+        - name: Riattiva i controlli di Monit
+          ansible.builtin.command: "monit monitor {{ item }}"
+          loop: "{{ eduwisp_monit_applicazione }}"
+          changed_when: true
+          failed_when: false
+
+    - name: Disattiva la pagina di manutenzione
+      ansible.builtin.file:
+        path: "{{ eduwisp_home }}/manutenzione/attiva"
+        state: absent
+
+    - name: Punti di ripristino esistenti
+      ansible.builtin.find:
+        paths: "{{ eduwisp_upgrade_dir }}"
+        file_type: directory
+      register: eduwisp_punti
+
+    - name: Conserva solo gli ultimi punti di ripristino
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ (eduwisp_punti.files | sort(attribute='mtime', reverse=true))[eduwisp_upgrade_keep | int:] }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Aggiornamento completato
+      ansible.builtin.debug:
+        msg: >-
+          {{ 'Server aggiornato alle versioni di sviluppo indicate in eduwisp_modules'
+             if eduwisp_modules | length > 0 else 'Server aggiornato al rilascio ' ~ eduwisp_platform_release }}
+          (moduli cambiati: {{ eduwisp_moduli_diversi | join(', ') }}).

@@ -8,7 +8,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 
 > 🧪 **Stato: prototipo v0.** Ruolo funzionante: installa `demo.eduwisp.org` (ADR-0015). La progettazione è nella [documentazione EduWISP](https://eduwisp.org/docs/architettura/deployment/).
 
-🇬🇧 *Ansible role to install and upgrade EduWISP on Debian GNU/Linux 13 (Trixie). **Status: design phase**, no code yet. See the [design docs](https://eduwisp.org/docs/en/architecture/deployment/).*
+🇬🇧 *Ansible role to install and upgrade EduWISP on Debian GNU/Linux 13 (Trixie). **Status: prototype v0**: working role, installs `demo.eduwisp.org`; safe upgrades with automatic rollback. See the [design docs](https://eduwisp.org/docs/en/architecture/deployment/).*
 
 ## Documentazione / Documentation
 
@@ -56,6 +56,30 @@ eduwisp_admin_password: "{{ vault_admin_password }}"
 ```
 
 Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) vengono **generati sul server** alla prima installazione. Esporta subito chiave e passphrase di Borg e conservale fuori dal server: senza di esse i backup sono illeggibili.
+
+## Aggiornamento / Upgrade
+
+Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`releases/`](releases/), ADR-0016): per ogni modulo, il commit esatto. Il ruolo installa i moduli **solo alla prima installazione**; se trova versioni diverse da quelle del rilascio si ferma, per non cambiare il database senza backup.
+
+Per aggiornare basta un comando:
+
+```bash
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.1.0
+```
+
+La procedura:
+
+1. **controlli**: servizi attivi, spazio libero, nessuna migrazione in sospeso;
+2. **punto di ripristino**: backup con BorgBackup, copia del database (`pg_dump`), dell'ambiente Python e del progetto in `/var/backups/eduwisp/aggiornamenti/` (restano gli ultimi 3);
+3. **manutenzione**: nginx risponde 503 con una pagina bilingue e `Retry-After`; i dispositivi continuano ad applicare le regole già ricevute e riprovano più tardi; i controlli di Monit sull'applicazione sono sospesi;
+4. **installazione** dei moduli del rilascio, migrazioni, file statici, `manage.py check`;
+5. **verifica**: risposte dell'applicazione chieste direttamente a gunicorn, worker di Celery, nessuna migrazione in sospeso, servizi attivi; poi la manutenzione viene tolta.
+
+**Se un passo fallisce**, il ruolo ripristina da solo ambiente Python, progetto e database (ricreato da zero dalla copia, così spariscono anche le tabelle di migrazioni a metà), riavvia i servizi, verifica, toglie la manutenzione e manda un avviso email. Il servizio non resta mai in uno stato a metà. Se anche la verifica dopo il ripristino fallisce, la pagina di manutenzione resta attiva e l'avviso chiede un intervento manuale.
+
+Per provare il ripristino: `-e eduwisp_upgrade_simulate_failure=true` fa fallire l'aggiornamento subito dopo le migrazioni. Per lo sviluppo, `eduwisp_modules` permette di indicare rami o commit al posto del rilascio.
+
+🇬🇧 *Module versions are pinned by a platform release (`releases/`). The role installs modules only on first install and stops if versions differ. Upgrade with `examples/aggiorna.yml`: pre-checks, restore point (Borg backup, `pg_dump`, venv and project copies), maintenance page (HTTP 503), install, migrate, verify. On any failure it restores venv, project and database automatically, verifies, and emails the admins.*
 
 ## Dipendenze / Dependencies
 

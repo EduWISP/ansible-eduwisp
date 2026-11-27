@@ -7,13 +7,21 @@ eduwisp_domains:
 # Avviso mostrato su ogni pagina; vuoto in produzione (ADR-0015).
 eduwisp_environment_notice: ""
 
-# Moduli EduWISP da installare (repository e versione).
-eduwisp_modules:
-  - { name: eduwisp-protocol, version: main }
-  - { name: eduwisp-users, version: main }
-  - { name: eduwisp-school, version: main }
-  - { name: eduwisp-devices, version: main }
-eduwisp_django_requirement: "Django>=5.2,<5.3"
+# Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
+eduwisp_platform_release: "0.1.0"
+# Solo per lo sviluppo: moduli e versioni (rami o commit) al posto del rilascio.
+# Esempio: [{ name: eduwisp-users, version: main }, ...]
+eduwisp_modules: []
+
+# Aggiornamenti (aggiorna.yml): punti di ripristino conservati sul server.
+eduwisp_upgrade_dir: /var/backups/eduwisp/aggiornamenti
+eduwisp_upgrade_keep: 3
+# Spazio libero minimo (MB) prima di aggiornare.
+eduwisp_upgrade_min_free_mb: 2048
+# Esegue anche un backup BorgBackup prima di aggiornare.
+eduwisp_upgrade_borg: true
+# Solo per provare il ripristino: fa fallire l'aggiornamento dopo le migrazioni.
+eduwisp_upgrade_simulate_failure: false
 
 eduwisp_user: eduwisp
 eduwisp_home: /opt/eduwisp

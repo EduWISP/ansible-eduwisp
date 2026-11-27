@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Stabilisce quali versioni dei moduli devono essere installate e quali lo sono già.
+- name: Rilascio della piattaforma
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/releases/{{ eduwisp_platform_release }}.yml"
+
+- name: Moduli richiesti (rilascio, oppure eduwisp_modules per lo sviluppo)
+  ansible.builtin.set_fact:
+    eduwisp_moduli_richiesti: "{{ eduwisp_modules if eduwisp_modules | length > 0 else eduwisp_platform_modules }}"
+
+- name: Commit corrispondenti a rami e tag
+  ansible.builtin.command: "git ls-remote --exit-code https://github.com/EduWISP/{{ item.name }} {{ item.version }}"
+  loop: "{{ eduwisp_moduli_richiesti | rejectattr('version', 'match', '^[0-9a-f]{40}$') | list }}"
+  register: eduwisp_ls_remote
+  changed_when: false
+  check_mode: false
+
+- name: Versioni richieste come commit
+  vars:
+    fissati: "{{ eduwisp_moduli_richiesti | selectattr('version', 'match', '^[0-9a-f]{40}$') | list }}"
+    risolti: "{{ eduwisp_ls_remote.results | default([]) }}"
+  ansible.builtin.set_fact:
+    eduwisp_moduli_voluti: >-
+      {{ dict(fissati | map(attribute='name') | zip(fissati | map(attribute='version')))
+         | combine(dict(risolti | map(attribute='item.name') | zip(risolti | map(attribute='stdout') | map('split') | map('first')))) }}
+
+- name: Ambiente virtuale presente?
+  ansible.builtin.stat:
+    path: "{{ eduwisp_home }}/venv/bin/pip"
+  register: eduwisp_venv_pip
+
+- name: Moduli installati
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/pip freeze --exclude-editable"
+  register: eduwisp_pip_freeze
+  changed_when: false
+  check_mode: false
+  when: eduwisp_venv_pip.stat.exists
+
+- name: Versioni installate e differenze
+  vars:
+    righe: "{{ eduwisp_pip_freeze.stdout_lines | default([]) | select('search', '^eduwisp-[a-z-]+ @ git\\+') | list }}"
+    installati: "{{ righe | map('regex_replace', '^(eduwisp-[a-z-]+) @ .*@([0-9a-f]{40})$', '\\1=\\2') | list }}"
+    voluti: "{{ eduwisp_moduli_voluti.keys() | zip(eduwisp_moduli_voluti.values()) | map('join', '=') | list }}"
+  ansible.builtin.set_fact:
+    eduwisp_moduli_installati: "{{ installati }}"
+    eduwisp_moduli_diversi: "{{ voluti | difference(installati) | map('regex_replace', '=.*$', '') | list }}"
+    eduwisp_prima_installazione: "{{ installati | length == 0 }}"

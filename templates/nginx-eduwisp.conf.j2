@@ -28,6 +28,25 @@ upstream eduwisp_app {
 {% endset %}
 
 {% set applicazione %}
+    # Manutenzione durante gli aggiornamenti: 503 se esiste il file "attiva" (aggiorna.yml).
+    set $eduwisp_manutenzione "";
+    if (-f {{ eduwisp_home }}/manutenzione/attiva) {
+        set $eduwisp_manutenzione "A";
+    }
+    if ($uri != /manutenzione.html) {
+        set $eduwisp_manutenzione "${eduwisp_manutenzione}B";
+    }
+    if ($eduwisp_manutenzione = "AB") {
+        return 503;
+    }
+    error_page 503 /manutenzione.html;
+    location = /manutenzione.html {
+        root {{ eduwisp_home }}/manutenzione;
+        internal;
+{{ intestazioni }}
+        add_header Retry-After "300" always;
+        add_header Cache-Control "no-store" always;
+    }
     location /static/ {
         alias {{ eduwisp_home }}/static/;
         expires 7d;

@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Pagina mostrata da nginx (HTTP 503) quando esiste il file "attiva", cioè durante gli aggiornamenti.
+- name: Cartella della pagina di manutenzione
+  ansible.builtin.file:
+    path: "{{ eduwisp_home }}/manutenzione"
+    state: directory
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "0750"
+
+- name: Pagina di manutenzione
+  ansible.builtin.template:
+    src: manutenzione.html.j2
+    dest: "{{ eduwisp_home }}/manutenzione/manutenzione.html"
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "0640"

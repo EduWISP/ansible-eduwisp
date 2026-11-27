@@ -22,4 +22,6 @@ jobs:
       - run: ansible-galaxy collection install -r ansible-eduwisp/requirements.yml
       - run: yamllint -d relaxed ansible-eduwisp
       - name: Controllo della sintassi
-        run: ANSIBLE_ROLES_PATH=$PWD ansible-playbook -i ansible-eduwisp/examples/inventory.example.yml ansible-eduwisp/examples/playbook.yml --syntax-check
+        run: |
+          ANSIBLE_ROLES_PATH=$PWD ansible-playbook -i ansible-eduwisp/examples/inventory.example.yml ansible-eduwisp/examples/playbook.yml --syntax-check
+          ANSIBLE_ROLES_PATH=$PWD ansible-playbook -i ansible-eduwisp/examples/inventory.example.yml ansible-eduwisp/examples/aggiorna.yml --syntax-check

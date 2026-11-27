@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+- name: Servizi attivi prima di iniziare
+  ansible.builtin.command: "systemctl is-active {{ item }}"
+  loop: [postgresql, valkey-server, eduwisp, eduwisp-worker, eduwisp-beat, nginx]
+  changed_when: false
+
+- name: Spazio libero
+  ansible.builtin.command: "df --output=avail -m {{ item }}"
+  loop: ["{{ eduwisp_home }}", /var/backups]
+  register: eduwisp_spazio
+  changed_when: false
+
+- name: Spazio sufficiente per il punto di ripristino
+  ansible.builtin.assert:
+    that: (item.stdout_lines | last | trim | int) >= (eduwisp_upgrade_min_free_mb | int)
+    fail_msg: "Spazio libero insufficiente in {{ item.item }}: servono almeno {{ eduwisp_upgrade_min_free_mb }} MB."
+    quiet: true
+  loop: "{{ eduwisp_spazio.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Nessuna migrazione in sospeso prima dell'aggiornamento
+  become: true
+  become_user: "{{ eduwisp_user }}"
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py migrate --check"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  changed_when: false
+
+- name: Pagina di manutenzione pronta
+  ansible.builtin.include_tasks: manutenzione.yml

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Installa le versioni richieste dal rilascio. Usato alla prima installazione e da aggiorna.yml.
+- name: Ambiente virtuale e dipendenze di base
+  ansible.builtin.pip:
+    name:
+      - "{{ eduwisp_platform_django }}"
+      - gunicorn
+      - "psycopg[binary]"
+      - "celery[redis]>=5.5,<6"
+      - packaging
+      - "redis>=5"
+    virtualenv: "{{ eduwisp_home }}/venv"
+    virtualenv_command: python3 -m venv
+
+- name: Moduli EduWISP alle versioni del rilascio
+  ansible.builtin.pip:
+    name: "git+https://github.com/EduWISP/{{ item }}@{{ eduwisp_moduli_voluti[item] }}"
+    virtualenv: "{{ eduwisp_home }}/venv"
+    state: forcereinstall
+    extra_args: --no-deps
+  loop: "{{ eduwisp_moduli_diversi }}"
+
+- name: Dipendenze dei moduli
+  ansible.builtin.pip:
+    name: "git+https://github.com/EduWISP/{{ item.key }}@{{ item.value }}"
+    virtualenv: "{{ eduwisp_home }}/venv"
+  loop: "{{ eduwisp_moduli_voluti | dict2items }}"
