@@ -1,0 +1,16 @@
+# Esempio di inventario. Copialo fuori dal repository e adattalo.
+all:
+  hosts:
+    eduwisp.scuola.example:
+      ansible_host: 192.0.2.10
+      ansible_user: root
+  vars:
+    eduwisp_domains: [eduwisp.scuola.example]
+    eduwisp_environment_notice: ""            # in produzione nessun avviso
+    eduwisp_ssh_port: 22
+    eduwisp_ssh_allow_users: [root]
+    eduwisp_admin_networks: [192.168.0.0/16]
+    eduwisp_ids_interface: eth0
+    eduwisp_ids_home_net: "[192.0.2.10/32]"
+    eduwisp_tls_certificate: /etc/letsencrypt/live/eduwisp.scuola.example/fullchain.pem
+    eduwisp_tls_certificate_key: /etc/letsencrypt/live/eduwisp.scuola.example/privkey.pem

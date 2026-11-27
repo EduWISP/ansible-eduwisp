@@ -6,7 +6,7 @@
 
 Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie).
 
-> 🚧 **Stato: progettazione.** Questo repository non contiene ancora codice. La progettazione è nella [documentazione EduWISP](https://eduwisp.org/docs/architettura/deployment/).
+> 🧪 **Stato: prototipo v0.** Ruolo funzionante: installa `demo.eduwisp.org` (ADR-0015). La progettazione è nella [documentazione EduWISP](https://eduwisp.org/docs/architettura/deployment/).
 
 🇬🇧 *Ansible role to install and upgrade EduWISP on Debian GNU/Linux 13 (Trixie). **Status: design phase**, no code yet. See the [design docs](https://eduwisp.org/docs/en/architecture/deployment/).*
 
@@ -15,6 +15,30 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 - Progettazione / Design: <https://eduwisp.org/docs/architettura/deployment/>
 - Mappa dei repository / Repository map: <https://eduwisp.org/docs/architettura/repository/>
 - Documentazione del modulo / Module docs: [`docs/user/`](docs/user/) · [`docs/developer/`](docs/developer/)
+
+## Cosa installa / What it installs
+
+| Area | Componenti |
+|---|---|
+| Applicazione | Moduli EduWISP in un ambiente virtuale, Django 5.2 LTS, gunicorn come servizio systemd **isolato** (esposizione 1,7/10 secondo `systemd-analyze security`) |
+| Dati | PostgreSQL 17 con autenticazione locale (nessuna password), configurazione non leggibile da altri utenti |
+| Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza; **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
+| Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
+| Prevenzione intrusioni | fail2ban (SSH, nginx, recidive) |
+| IDS | **Suricata** con regole ET Open aggiornate ogni giorno; **AIDE** per l'integrità dei file; **auditd** |
+| Hardening | parametri del kernel e della rete, SSH solo con chiavi e cifrari moderni (con ripristino automatico se la configurazione non è valida), niente core dump, aggiornamenti di sicurezza automatici |
+
+Su `server.eduwisp.org` l'audit **Lynis** dà un indice di hardening di **78/100**. Il ruolo è idempotente.
+
+## Uso / Usage
+
+```bash
+ansible-galaxy collection install community.postgresql ansible.posix
+cp examples/inventory.example.yml ~/eduwisp-inventory.yml   # e adattalo
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/playbook.yml
+```
+
+Le variabili sono in [`defaults/main.yml`](defaults/main.yml). **Non pubblicare il tuo inventario**: contiene indirizzi e impostazioni della tua rete.
 
 ## Dipendenze / Dependencies
 

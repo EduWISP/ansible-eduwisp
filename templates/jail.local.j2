@@ -1,0 +1,23 @@
+# {{ ansible_managed }} — fail2ban EduWISP
+[DEFAULT]
+banaction = nftables-multiport
+banaction_allports = nftables-allports
+backend = systemd
+bantime = 1h
+findtime = 10m
+maxretry = 5
+ignoreip = 127.0.0.1/8 ::1 {{ eduwisp_fail2ban_ignoreip | join(' ') }}
+
+[sshd]
+enabled = true
+port = {{ eduwisp_ssh_port }}
+
+[nginx-botsearch]
+enabled = true
+backend = auto
+logpath = /var/log/nginx/access.log
+
+[recidive]
+enabled = true
+backend = auto
+bantime = 1w

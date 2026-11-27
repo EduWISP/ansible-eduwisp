@@ -1,0 +1,27 @@
+---
+- name: Regole nftables
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0600"
+    validate: nft -c -f %s
+  notify: Ricarica nftables
+
+- name: nftables attivo all'avvio
+  ansible.builtin.systemd_service:
+    name: nftables
+    enabled: true
+    state: started
+
+- name: fail2ban
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.d/eduwisp.local
+    mode: "0644"
+  notify: Riavvia fail2ban
+
+- name: fail2ban attivo
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started

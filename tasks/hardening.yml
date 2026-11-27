@@ -1,0 +1,66 @@
+---
+- name: Parametri di sicurezza del kernel e della rete
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-eduwisp-hardening.conf
+    sysctl_set: true
+    reload: false
+  loop: "{{ eduwisp_sysctl | dict2items }}"
+
+- name: Niente core dump
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/90-eduwisp-nocore.conf
+    mode: "0644"
+    content: "* hard core 0\n"
+
+- name: Configurazione SSH più restrittiva (con ripristino automatico se non valida)
+  block:
+    - name: Scrive la configurazione SSH
+      ansible.builtin.template:
+        src: sshd-eduwisp.conf.j2
+        dest: /etc/ssh/sshd_config.d/50-eduwisp.conf
+        mode: "0644"
+        backup: true
+      register: eduwisp_sshd_conf
+
+    - name: Verifica la configurazione completa di SSH
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+
+    - name: Riavvia SSH solo se la configurazione è valida
+      ansible.builtin.systemd_service:
+        name: ssh
+        state: restarted
+      when: eduwisp_sshd_conf.changed
+  rescue:
+    - name: Ripristina la configurazione precedente
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ eduwisp_sshd_conf.backup_file }}"
+        dest: /etc/ssh/sshd_config.d/50-eduwisp.conf
+        mode: "0644"
+      when: eduwisp_sshd_conf.backup_file is defined
+
+    - name: Rimuove la nuova configurazione se non c'era una precedente
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d/50-eduwisp.conf
+        state: absent
+      when: eduwisp_sshd_conf.backup_file is not defined
+
+    - name: Interrompe l'installazione
+      ansible.builtin.fail:
+        msg: La configurazione SSH non è valida ed è stata ripristinata.
+
+- name: Regole di audit
+  ansible.builtin.template:
+    src: audit-eduwisp.rules.j2
+    dest: /etc/audit/rules.d/50-eduwisp.rules
+    mode: "0640"
+  notify: Riavvia auditd
+
+- name: auditd attivo
+  ansible.builtin.systemd_service:
+    name: auditd
+    enabled: true
+    state: started

@@ -1,0 +1,11 @@
+## {{ ansible_managed }} — regole di audit EduWISP
+-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -k identita
+-a always,exit -F arch=b64 -F path=/etc/group -F perm=wa -k identita
+-a always,exit -F arch=b64 -F path=/etc/shadow -F perm=wa -k identita
+-a always,exit -F arch=b64 -F path=/etc/sudoers -F perm=wa -k privilegi
+-a always,exit -F arch=b64 -F dir=/etc/sudoers.d -F perm=wa -k privilegi
+-a always,exit -F arch=b64 -F path=/etc/ssh/sshd_config -F perm=wa -k ssh
+-a always,exit -F arch=b64 -F dir=/etc/ssh/sshd_config.d -F perm=wa -k ssh
+-a always,exit -F arch=b64 -F path=/etc/nftables.conf -F perm=wa -k firewall
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k ora
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k moduli_kernel

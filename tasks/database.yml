@@ -1,0 +1,34 @@
+---
+- name: PostgreSQL attivo
+  ansible.builtin.systemd_service:
+    name: postgresql
+    enabled: true
+    state: started
+
+- name: Utente di sistema EduWISP
+  ansible.builtin.user:
+    name: "{{ eduwisp_user }}"
+    system: true
+    home: "{{ eduwisp_home }}"
+    shell: /usr/sbin/nologin
+    create_home: true
+
+- name: Ruolo PostgreSQL (autenticazione locale peer, senza password)
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ eduwisp_user }}"
+
+- name: Database EduWISP
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ eduwisp_db_name }}"
+    owner: "{{ eduwisp_user }}"
+    encoding: UTF8
+
+- name: Configurazione di PostgreSQL non leggibile da altri utenti
+  ansible.builtin.file:
+    path: "/etc/postgresql/17/main/{{ item }}"
+    mode: "0640"
+  loop: [postgresql.conf, pg_ctl.conf, start.conf, environment, pg_hba.conf, pg_ident.conf]

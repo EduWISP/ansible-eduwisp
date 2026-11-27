@@ -1,0 +1,3 @@
+## {{ ansible_managed }} — audit dei file di EduWISP
+-a always,exit -F arch=b64 -F dir=/etc/eduwisp -F perm=wa -k eduwisp
+-a always,exit -F arch=b64 -F dir={{ eduwisp_home }}/project -F perm=wa -k eduwisp
