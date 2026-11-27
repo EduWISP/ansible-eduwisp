@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
 ---
 # Verifica diretta su gunicorn, prima di togliere la pagina di manutenzione.
-# Sarà sostituita dall'endpoint /health/ (EduWISP/eduwisp-utils#3).
+# Con eduwisp-utils (rilascio 0.2.0 e successivi) usa anche /health/: database, migrazioni, coda.
 - name: Strumento di verifica
   ansible.builtin.template:
     src: eduwisp-verifica-http.py.j2
@@ -11,9 +11,9 @@
 
 - name: L'applicazione risponde
   ansible.builtin.command: "/usr/local/sbin/eduwisp-verifica-http {{ item.path }}"
-  loop:
-    - { path: /admin/login/, code: "200" }
-    - { path: /api/protocol/v0/policy, code: "401" }
+  loop: >-
+    {{ [{'path': '/admin/login/', 'code': '200'}, {'path': '/api/protocol/v0/policy', 'code': '401'}]
+       + ([{'path': '/health/', 'code': '200'}] if eduwisp_health else []) }}
   register: eduwisp_verifica_http
   until: eduwisp_verifica_http.stdout == item.code
   retries: 10

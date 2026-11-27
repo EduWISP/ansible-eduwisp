@@ -47,3 +47,5 @@
     eduwisp_moduli_installati: "{{ installati }}"
     eduwisp_moduli_diversi: "{{ voluti | difference(installati) | map('regex_replace', '=.*$', '') | list }}"
     eduwisp_prima_installazione: "{{ installati | length == 0 }}"
+    # Endpoint /health/ disponibile dal rilascio 0.2.0 (eduwisp-utils).
+    eduwisp_health: "{{ 'eduwisp-utils' in eduwisp_moduli_voluti }}"

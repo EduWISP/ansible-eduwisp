@@ -7,4 +7,7 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
     path("", include("eduwisp_devices.urls")),
+{% if eduwisp_health %}
+    path("", include("eduwisp_utils.urls")),
+{% endif %}
 ]

@@ -26,5 +26,5 @@ check system {{ ansible_hostname }}
     if loadavg (5min) > {{ ansible_processor_vcpus * 2 }} for 5 cycles then alert
 
 check host sito-{{ eduwisp_domains[0] }} with address {{ eduwisp_domains[0] }}
-    if failed port 443 protocol https request "/admin/login/" status = 200
+    if failed port 443 protocol https request "{{ '/health/' if eduwisp_health else '/admin/login/' }}" status = 200
        and certificate valid > 15 days for 2 cycles then alert

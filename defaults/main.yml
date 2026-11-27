@@ -8,7 +8,7 @@ eduwisp_domains:
 eduwisp_environment_notice: ""
 
 # Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
-eduwisp_platform_release: "0.1.0"
+eduwisp_platform_release: "0.2.0"
 # Solo per lo sviluppo: moduli e versioni (rami o commit) al posto del rilascio.
 # Esempio: [{ name: eduwisp-users, version: main }, ...]
 eduwisp_modules: []
