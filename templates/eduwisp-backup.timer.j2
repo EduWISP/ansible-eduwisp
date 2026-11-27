@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Backup di EduWISP (pianificazione)
+
+[Timer]
+OnCalendar={{ eduwisp_backup_time }}
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

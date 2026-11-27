@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Backup cifrati con BorgBackup e prova di ripristino mensile (ADR-0016).
+---
+- name: BorgBackup
+  ansible.builtin.apt:
+    name: borgbackup
+    state: present
+
+- name: Cartella di lavoro dei backup
+  ansible.builtin.file:
+    path: /var/backups/eduwisp
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Passphrase dell'archivio (generata una sola volta sul server)
+  ansible.builtin.shell: |
+    umask 077
+    python3 -c 'import secrets; print(secrets.token_urlsafe(48))' > /etc/eduwisp/borg_passphrase
+  args:
+    creates: /etc/eduwisp/borg_passphrase
+
+- name: Permessi della passphrase
+  ansible.builtin.file:
+    path: /etc/eduwisp/borg_passphrase
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Chiave SSH per l'archivio remoto
+  community.crypto.openssh_keypair:
+    path: /root/.ssh/eduwisp_backup
+    type: ed25519
+    comment: "eduwisp-backup@{{ ansible_fqdn }}"
+  when: eduwisp_backup_repo is match('ssh://')
+
+- name: Script di backup e di verifica
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/usr/local/sbin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop: [eduwisp-backup, eduwisp-backup-verify]
+
+- name: Inizializza l'archivio cifrato se non esiste
+  ansible.builtin.command: /usr/local/sbin/eduwisp-backup init
+  register: eduwisp_borg_init
+  changed_when: "'creato' in eduwisp_borg_init.stdout"
+
+- name: Servizi e timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - eduwisp-backup.service
+    - eduwisp-backup.timer
+    - eduwisp-backup-verify.service
+    - eduwisp-backup-verify.timer
+  notify: Ricarica systemd
+
+- name: Timer attivi
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: [eduwisp-backup.timer, eduwisp-backup-verify.timer]
+
+- name: Avviso se l'archivio è sullo stesso server
+  ansible.builtin.debug:
+    msg: >-
+      ATTENZIONE: l'archivio dei backup ({{ eduwisp_backup_repo }}) è sullo stesso server.
+      Protegge da errori, non da guasti del disco o attacchi. Configura un archivio remoto.
+  when: not eduwisp_backup_repo is match('ssh://')

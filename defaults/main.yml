@@ -73,3 +73,17 @@ eduwisp_sysctl:
   net.ipv6.conf.all.accept_redirects: 0
   net.ipv6.conf.default.accept_redirects: 0
   net.ipv6.conf.all.accept_source_route: 0
+
+# Backup con BorgBackup (ADR-0016).
+eduwisp_backup_enabled: true
+# Archivio: percorso locale oppure remoto via SSH, per esempio
+# "ssh://borg@backup.example.org:22/./eduwisp". Va tenuto FUORI dal server:
+# un archivio locale protegge solo da errori, non da guasti del disco o attacchi.
+eduwisp_backup_repo: /var/backups/eduwisp/borg
+eduwisp_backup_time: "*-*-* 02:30:00"
+eduwisp_backup_verify_time: "*-*-01 04:30:00"
+eduwisp_backup_keep_daily: 7
+eduwisp_backup_keep_weekly: 4
+eduwisp_backup_keep_monthly: 6
+eduwisp_backup_databases: ["{{ eduwisp_db_name }}"]
+eduwisp_backup_paths: [/etc/eduwisp, /etc/nginx, /etc/valkey, /etc/nftables.conf, /etc/fail2ban/jail.d, /etc/ssh/sshd_config.d]

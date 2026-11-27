@@ -1,0 +1,43 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Backup di EduWISP con BorgBackup (ADR-0016). Uso: eduwisp-backup [init|create]
+set -euo pipefail
+umask 077
+
+export BORG_REPO={{ eduwisp_backup_repo | quote }}
+export BORG_PASSCOMMAND="cat /etc/eduwisp/borg_passphrase"
+export BORG_RSH="ssh -i /root/.ssh/eduwisp_backup -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+export BORG_RELOCATED_REPO_ACCESS_IS_OK=no
+export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no
+LAVORO=/var/backups/eduwisp/dump
+
+case "${1:-create}" in
+  init)
+    if borg info >/dev/null 2>&1; then
+      echo "archivio già presente"
+    else
+      borg init --encryption=repokey-blake2
+      echo "archivio creato"
+      echo "IMPORTANTE: esporta la chiave e conservala fuori dal server: borg key export \"\$BORG_REPO\" -"
+    fi
+    ;;
+  create)
+    rm -rf "$LAVORO"; mkdir -p "$LAVORO"
+    trap 'rm -rf "$LAVORO"' EXIT
+{% for db in eduwisp_backup_databases %}
+    runuser -u postgres -- pg_dump --format=custom --no-owner {{ db | quote }} > "$LAVORO/{{ db }}.dump"
+{% endfor %}
+    borg create --stats --compression zstd,6 --exclude-caches \
+      "::{hostname}-{now:%Y-%m-%dT%H:%M}" "$LAVORO" {{ eduwisp_backup_paths | map('quote') | join(' ') }}
+    borg prune --list --glob-archives '{hostname}-*' \
+      --keep-daily {{ eduwisp_backup_keep_daily }} \
+      --keep-weekly {{ eduwisp_backup_keep_weekly }} \
+      --keep-monthly {{ eduwisp_backup_keep_monthly }}
+{% if not eduwisp_backup_repo is match('ssh://') %}
+    borg compact
+{% endif %}
+    echo "backup completato"
+    ;;
+  *)
+    echo "uso: $0 [init|create]" >&2; exit 2 ;;
+esac

@@ -24,6 +24,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Attività in background | **Valkey** (solo socket Unix locale, con password, persistenza AOF) e **Celery** worker e beat, isolati come gunicorn |
 | Dati | PostgreSQL 17 con autenticazione locale (nessuna password), configurazione non leggibile da altri utenti |
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza; **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
+| Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio locale o remoto via SSH (consigliato: remoto in modalità *append-only*) |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
 | Prevenzione intrusioni | fail2ban (SSH, nginx, recidive) |
 | IDS | **Suricata** con regole ET Open aggiornate ogni giorno; **AIDE** per l'integrità dei file; **auditd** |
