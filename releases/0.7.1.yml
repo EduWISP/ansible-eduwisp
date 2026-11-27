@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Rilascio 0.7.1 della piattaforma EduWISP: QR code di registrazione completo (app di sistema
+# mantenute, lingua e fuso orario); APK firmato del DPC pubblicato in /dpc/
+# Ogni modulo è fissato a un commit preciso (ADR-0010, ADR-0016).
+eduwisp_platform_django: "Django>=5.2,<5.3"
+eduwisp_platform_modules:
+  - { name: eduwisp-utils, version: 9d4f0ddb591e9378cf5baf53f9e8bb700f62be1a }
+  - { name: eduwisp-protocol, version: 518984f7373e89194d79a1222d277b8426cdea99 }
+  - { name: eduwisp-users, version: f26afd3f174a053b007fcd7bca0bfb44d19af5a9 }
+  - { name: eduwisp-audit, version: 6167257d6c306d6796c13e3e03fa12e11a662f3a }
+  - { name: eduwisp-school, version: 2064e18e9cebc7ff7e0aa12b375d34e0401e7441 }
+  - { name: eduwisp-devices, version: 61a6bc43b3a824a878b85aba729b272f2f2d5e81 }
+  - { name: eduwisp-apps, version: c75b944cb952c1683882f59ad32548b75b23a7f7 }
+  - { name: eduwisp-portal, version: cc511a8fee177b0defb32dfbf3686ef5688cfdb7 }

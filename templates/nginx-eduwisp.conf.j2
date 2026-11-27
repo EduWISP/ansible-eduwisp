@@ -51,6 +51,12 @@ upstream eduwisp_app {
         alias {{ eduwisp_home }}/static/;
         expires 7d;
     }
+    # DPC per la registrazione con il QR code: Android lo scarica e ne verifica la firma.
+    location = /dpc/eduwisp-dpc.apk {
+        alias {{ eduwisp_home }}/dpc/eduwisp-dpc.apk;
+        types { }
+        default_type application/vnd.android.package-archive;
+    }
 {% if eduwisp_apps %}
     # Solo i loghi delle app (ADR-0020); gli APK stanno altrove e passano dall'applicazione.
     location ~* ^/media/app/icone/[^/]+\.(png|webp|jpe?g)$ {
