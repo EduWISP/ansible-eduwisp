@@ -1,0 +1,5 @@
+# Collezioni Ansible richieste dal ruolo.
+collections:
+  - name: ansible.posix
+  - name: community.crypto
+  - name: community.postgresql

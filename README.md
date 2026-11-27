@@ -38,7 +38,7 @@ Su `server.eduwisp.org` l'audit **Lynis** dà un indice di hardening di **78/100
 ## Uso / Usage
 
 ```bash
-ansible-galaxy collection install community.postgresql ansible.posix
+ansible-galaxy collection install -r requirements.yml
 cp examples/inventory.example.yml ~/eduwisp-inventory.yml   # e adattalo
 ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/playbook.yml
 ```
