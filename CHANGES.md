@@ -22,3 +22,4 @@
 - Rilascio 0.6.0: elenco unico con la spunta «obbligatoria», loghi e installazione silenziosa degli APK (ADR-0020); cartelle per loghi (serviti da nginx, solo immagini) e APK (privati, inclusi nei backup); caricamenti fino a 300 MB nel catalogo. / *Release 0.6.0: required flag, logos, silent APK install.*
 - Rilascio 0.7.0: richieste di app dal tablet, parere della famiglia, decisione motivata del docente e app per il singolo studente (ADR-0021); esempi nella demo. / *Release 0.7.0: app requests and per-student apps.*
 - Rilascio 0.7.1: pubblicazione dell'APK firmato del DPC in `/dpc/` per la registrazione con il QR code (controllo dell'impronta della firma); QR con app di sistema mantenute, lingua e fuso orario. / *Release 0.7.1: signed DPC APK published for QR enrollment.*
+- Rilascio 0.8.0: API per le app mobili (eduwisp-api, ADR-0022); limite di tentativi su `/api/app/v1/accedi`; verifica dell'aggiornamento anche sull'API. / *Release 0.8.0: mobile app API.*
