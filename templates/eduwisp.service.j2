@@ -2,7 +2,9 @@
 [Unit]
 Description=EduWISP (gunicorn)
 After=network.target postgresql.service
-Requires=postgresql.service
+# Wants e non Requires: se PostgreSQL si riavvia (per esempio per un aggiornamento di sicurezza)
+# l'applicazione resta attiva, /health/ risponde 503 e il servizio torna da solo.
+Wants=postgresql.service
 
 [Service]
 Type=notify

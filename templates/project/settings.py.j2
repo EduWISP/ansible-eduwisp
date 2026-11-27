@@ -8,6 +8,9 @@ ALLOWED_HOSTS = {{ eduwisp_domains | to_json }}
 CSRF_TRUSTED_ORIGINS = {{ eduwisp_domains | map('regex_replace', '^', 'https://') | list | to_json }}
 
 INSTALLED_APPS = [
+{% if eduwisp_health %}
+    "eduwisp_utils",
+{% endif %}
     "eduwisp_users",
     "eduwisp_school",
     "eduwisp_devices",

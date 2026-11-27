@@ -64,7 +64,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.1.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.2.0
 ```
 
 La procedura:
@@ -73,9 +73,11 @@ La procedura:
 2. **punto di ripristino**: backup con BorgBackup, copia del database (`pg_dump`), dell'ambiente Python e del progetto in `/var/backups/eduwisp/aggiornamenti/` (restano gli ultimi 3);
 3. **manutenzione**: nginx risponde 503 con una pagina bilingue e `Retry-After`; i dispositivi continuano ad applicare le regole già ricevute e riprovano più tardi; i controlli di Monit sull'applicazione sono sospesi;
 4. **installazione** dei moduli del rilascio, migrazioni, file statici, `manage.py check`;
-5. **verifica**: risposte dell'applicazione chieste direttamente a gunicorn, worker di Celery, nessuna migrazione in sospeso, servizi attivi; poi la manutenzione viene tolta.
+5. **verifica**: risposte dell'applicazione chieste direttamente a gunicorn (compreso `/health/` dal rilascio 0.2.0), worker di Celery, nessuna migrazione in sospeso, servizi attivi; poi la manutenzione viene tolta.
 
-**Se un passo fallisce**, il ruolo ripristina da solo ambiente Python, progetto e database (ricreato da zero dalla copia, così spariscono anche le tabelle di migrazioni a metà), riavvia i servizi, verifica, toglie la manutenzione e manda un avviso email. Il servizio non resta mai in uno stato a metà. Se anche la verifica dopo il ripristino fallisce, la pagina di manutenzione resta attiva e l'avviso chiede un intervento manuale.
+**Se un passo fallisce**, il ruolo ripristina da solo ambiente Python, progetto e database (ricreato da zero dalla copia, così spariscono anche le tabelle di migrazioni a metà), riavvia i servizi, verifica, toglie la manutenzione e manda un avviso email. Il servizio non resta mai in uno stato a metà.
+
+Dopo un aggiornamento esegui di nuovo il playbook normale: applica le configurazioni che dipendono dal rilascio (per esempio Monit su `/health/`). Se anche la verifica dopo il ripristino fallisce, la pagina di manutenzione resta attiva e l'avviso chiede un intervento manuale.
 
 Per provare il ripristino: `-e eduwisp_upgrade_simulate_failure=true` fa fallire l'aggiornamento subito dopo le migrazioni. Per lo sviluppo, `eduwisp_modules` permette di indicare rami o commit al posto del rilascio.
 
