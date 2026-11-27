@@ -25,6 +25,8 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Dati | PostgreSQL 17 con autenticazione locale (nessuna password), configurazione non leggibile da altri utenti |
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza; **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
 | Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio locale o remoto via SSH (consigliato: remoto in modalità *append-only*) |
+| Monitoraggio e avvisi | **Monit** (servizi, disco, memoria, carico, risposta HTTPS e scadenza del certificato), invio della posta con **msmtp** tramite un relay SMTP autenticato, **avviso immediato** se il backup o la prova di ripristino falliscono, **riepilogo quotidiano** di sicurezza (allarmi Suricata, fail2ban, backup, certificato, aggiornamenti) |
+| Amministratore | Creato o aggiornato da Ansible con la password presa dal vault (almeno 12 caratteri), senza mai mostrarla nei log |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
 | Prevenzione intrusioni | fail2ban (SSH, nginx, recidive) |
 | IDS | **Suricata** con regole ET Open aggiornate ogni giorno; **AIDE** per l'integrità dei file; **auditd** |
@@ -41,6 +43,18 @@ ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/playb
 ```
 
 Le variabili sono in [`defaults/main.yml`](defaults/main.yml). **Non pubblicare il tuo inventario**: contiene indirizzi e impostazioni della tua rete.
+
+### Segreti
+
+Password SMTP e password dell'amministratore vanno tenute in un file cifrato con **ansible-vault**, mai in chiaro nell'inventario:
+
+```yaml
+# inventario
+eduwisp_smtp_password: "{{ vault_smtp_password }}"
+eduwisp_admin_password: "{{ vault_admin_password }}"
+```
+
+Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) vengono **generati sul server** alla prima installazione. Esporta subito chiave e passphrase di Borg e conservale fuori dal server: senza di esse i backup sono illeggibili.
 
 ## Dipendenze / Dependencies
 

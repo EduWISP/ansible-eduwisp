@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Avviso via email per %i
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/eduwisp-alert %i

@@ -87,3 +87,19 @@ eduwisp_backup_keep_weekly: 4
 eduwisp_backup_keep_monthly: 6
 eduwisp_backup_databases: ["{{ eduwisp_db_name }}"]
 eduwisp_backup_paths: [/etc/eduwisp, /etc/nginx, /etc/valkey, /etc/nftables.conf, /etc/fail2ban/jail.d, /etc/ssh/sshd_config.d]
+
+# Avvisi e monitoraggio (ADR-0016).
+eduwisp_alert_email: ""                 # destinatario degli avvisi; vuoto = avvisi disattivati
+eduwisp_smtp_host: ""
+eduwisp_smtp_port: 587
+eduwisp_smtp_user: ""
+eduwisp_smtp_password: ""               # dal vault
+eduwisp_smtp_from: "{{ eduwisp_smtp_user }}"
+eduwisp_monit_disk_limit: 80            # percentuale
+eduwisp_monit_memory_limit: 85
+eduwisp_report_time: "*-*-* 07:00:00"
+
+# Amministratore di EduWISP gestito da Ansible (facoltativo). La password va nel vault.
+eduwisp_admin_user: ""
+eduwisp_admin_email: ""
+eduwisp_admin_password: ""

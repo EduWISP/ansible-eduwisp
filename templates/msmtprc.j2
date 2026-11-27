@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+defaults
+auth           on
+tls            on
+tls_starttls   {{ 'off' if eduwisp_smtp_port | int == 465 else 'on' }}
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+syslog         LOG_MAIL
+aliases        /etc/aliases
+
+account        eduwisp
+host           {{ eduwisp_smtp_host }}
+port           {{ eduwisp_smtp_port }}
+user           {{ eduwisp_smtp_user }}
+password       {{ eduwisp_smtp_password }}
+from           {{ eduwisp_smtp_from }}
+
+account default : eduwisp

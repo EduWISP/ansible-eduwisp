@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Riepilogo quotidiano di sicurezza di EduWISP
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/eduwisp-security-report
+Nice=10

@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Monitoraggio e avvisi via email (ADR-0016).
+---
+- name: Avvisi configurati?
+  ansible.builtin.set_fact:
+    eduwisp_avvisi_attivi: "{{ (eduwisp_alert_email | length > 0) and (eduwisp_smtp_host | length > 0) and (eduwisp_smtp_password | length > 0) }}"
+  no_log: true
+
+- name: Avvisi disattivati
+  ansible.builtin.debug:
+    msg: "Avvisi via email non configurati: imposta eduwisp_alert_email, eduwisp_smtp_host e la password nel vault."
+  when: not eduwisp_avvisi_attivi
+
+- name: Monitoraggio e avvisi
+  when: eduwisp_avvisi_attivi
+  block:
+    - name: Pacchetti
+      ansible.builtin.apt:
+        name: [msmtp-mta, bsd-mailx, monit, jq]
+        state: present
+
+    - name: Relay SMTP autenticato (msmtp)
+      ansible.builtin.template:
+        src: msmtprc.j2
+        dest: /etc/msmtprc
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+
+    - name: La posta per root va all'amministratore
+      ansible.builtin.copy:
+        dest: /etc/aliases
+        mode: "0644"
+        content: |
+          # Gestito da Ansible (ansible-eduwisp)
+          root: {{ eduwisp_alert_email }}
+          default: {{ eduwisp_alert_email }}
+
+    - name: Configurazione di Monit
+      ansible.builtin.template:
+        src: monit-eduwisp.j2
+        dest: /etc/monit/conf.d/eduwisp
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      notify: Ricarica monit
+
+    - name: Monit attivo
+      ansible.builtin.systemd_service:
+        name: monit
+        enabled: true
+        state: started
+
+    - name: Script di avviso e riepilogo di sicurezza
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/usr/local/sbin/{{ item }}"
+        mode: "0750"
+      loop: [eduwisp-alert, eduwisp-security-report]
+
+    - name: Servizi di avviso e riepilogo
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        mode: "0644"
+      loop:
+        - eduwisp-alert@.service
+        - eduwisp-security-report.service
+        - eduwisp-security-report.timer
+      notify: Ricarica systemd
+
+    - name: Cartelle degli override
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item }}.service.d"
+        state: directory
+        mode: "0755"
+      loop: [eduwisp-backup, eduwisp-backup-verify]
+
+    - name: Avviso immediato se backup o prova di ripristino falliscono
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item }}.service.d/avviso.conf"
+        mode: "0644"
+        content: |
+          [Unit]
+          OnFailure=eduwisp-alert@%n.service
+      loop: [eduwisp-backup, eduwisp-backup-verify]
+      notify: Ricarica systemd
+
+    - name: Riepilogo quotidiano attivo
+      ansible.builtin.systemd_service:
+        name: eduwisp-security-report.timer
+        enabled: true
+        state: started
+        daemon_reload: true

@@ -130,3 +130,28 @@
     dest: /etc/audit/rules.d/60-eduwisp-app.rules
     mode: "0640"
   notify: Riavvia auditd
+
+- name: Amministratore di EduWISP (dal vault)
+  when: eduwisp_admin_user | length > 0 and eduwisp_admin_password | length > 0
+  block:
+    - name: Script di gestione dell'amministratore
+      ansible.builtin.template:
+        src: admin_account.py.j2
+        dest: "{{ eduwisp_home }}/project/admin_account.py"
+        owner: root
+        group: "{{ eduwisp_user }}"
+        mode: "0640"
+
+    - name: Crea o aggiorna l'amministratore
+      become: true
+      become_user: "{{ eduwisp_user }}"
+      ansible.builtin.shell: "{{ eduwisp_home }}/venv/bin/python manage.py shell < admin_account.py"
+      args:
+        chdir: "{{ eduwisp_home }}/project"
+      environment:
+        EDUWISP_ADMIN_USER: "{{ eduwisp_admin_user }}"
+        EDUWISP_ADMIN_EMAIL: "{{ eduwisp_admin_email }}"
+        EDUWISP_ADMIN_PASSWORD: "{{ eduwisp_admin_password }}"
+      register: eduwisp_admin_result
+      changed_when: "'invariato' not in eduwisp_admin_result.stdout"
+      no_log: true

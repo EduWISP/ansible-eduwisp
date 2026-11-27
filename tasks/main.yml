@@ -28,3 +28,5 @@
 - ansible.builtin.import_tasks: backup.yml
   tags: [backup]
   when: eduwisp_backup_enabled
+- ansible.builtin.import_tasks: monitoring.yml
+  tags: [monitoring]

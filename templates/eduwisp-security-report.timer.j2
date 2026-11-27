@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Riepilogo quotidiano di sicurezza di EduWISP (pianificazione)
+
+[Timer]
+OnCalendar={{ eduwisp_report_time }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

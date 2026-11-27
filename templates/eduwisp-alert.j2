@@ -1,0 +1,11 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Invia un avviso via email quando un servizio systemd fallisce. Uso: eduwisp-alert <unità>
+set -euo pipefail
+UNITA="$1"
+{
+  echo "Il servizio $UNITA è fallito su {{ ansible_fqdn }} ($(date '+%d/%m/%Y %H:%M'))."
+  echo
+  echo "Ultime righe del log:"
+  journalctl -u "$UNITA" -n 40 --no-pager
+} | mail -s "[EduWISP {{ ansible_fqdn }}] ERRORE: $UNITA" {{ eduwisp_alert_email | quote }}

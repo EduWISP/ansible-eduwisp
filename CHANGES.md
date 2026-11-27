@@ -7,3 +7,5 @@
 - Prototipo v0: ruolo per Debian 13 con applicazione, PostgreSQL, nginx/TLS, firewall nftables, fail2ban, Suricata, AIDE, auditd e hardening. / *v0 prototype: Debian 13 role with app, PostgreSQL, nginx/TLS, nftables, fail2ban, Suricata, AIDE, auditd and hardening.*
 - Valkey e Celery (worker e beat) per le attività in background (ADR-0016, #5). / *Valkey and Celery worker/beat (ADR-0016).*
 - Backup con BorgBackup e prova di ripristino mensile (ADR-0016, #6). / *BorgBackup backups with monthly restore test.*
+- Monitoraggio con Monit, avvisi via email (msmtp), avviso sui fallimenti dei backup, riepilogo quotidiano di sicurezza (#7). / *Monit monitoring, email alerts, backup failure alerts, daily security summary.*
+- Amministratore gestito da Ansible con password dal vault. / *Admin account managed from the vault.*
