@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+- name: Ferma l'applicazione e le attività in background
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: stopped
+  loop: [eduwisp-beat, eduwisp-worker, eduwisp]
+
+- name: Ripristina ambiente Python e progetto
+  ansible.builtin.shell: |
+    set -euo pipefail
+    rm -rf {{ eduwisp_home }}/{{ item }}
+    cp -a {{ eduwisp_punto_ripristino }}/{{ item }} {{ eduwisp_home }}/{{ item }}
+  args:
+    executable: /bin/bash
+  loop: [venv, project]
+  changed_when: true
+
+# Database ricreato da zero: elimina anche le tabelle create da migrazioni parziali.
+- name: Ripristina il database
+  ansible.builtin.shell: |
+    set -euo pipefail
+    runuser -u postgres -- dropdb --force --if-exists {{ eduwisp_db_name | quote }}
+    runuser -u postgres -- createdb -O {{ eduwisp_user | quote }} -E UTF8 -T template0 {{ eduwisp_db_name | quote }}
+    runuser -u postgres -- pg_restore --exit-on-error -d {{ eduwisp_db_name | quote }} < {{ (eduwisp_punto_ripristino + '/database.dump') | quote }}
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Riavvia l'applicazione e le attività in background
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+  loop: [eduwisp, eduwisp-worker, eduwisp-beat]

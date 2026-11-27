@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+# Verifica diretta su gunicorn, prima di togliere la pagina di manutenzione.
+# Sarà sostituita dall'endpoint /health/ (EduWISP/eduwisp-utils#3).
+- name: Strumento di verifica
+  ansible.builtin.template:
+    src: eduwisp-verifica-http.py.j2
+    dest: /usr/local/sbin/eduwisp-verifica-http
+    mode: "0750"
+
+- name: L'applicazione risponde
+  ansible.builtin.command: "/usr/local/sbin/eduwisp-verifica-http {{ item.path }}"
+  loop:
+    - { path: /admin/login/, code: "200" }
+    - { path: /api/protocol/v0/policy, code: "401" }
+  register: eduwisp_verifica_http
+  until: eduwisp_verifica_http.stdout == item.code
+  retries: 10
+  delay: 3
+  changed_when: false
+
+- name: Il worker di Celery risponde
+  become: true
+  become_user: "{{ eduwisp_user }}"
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/celery -A eduwisp_server inspect ping --timeout 10"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  environment:
+    DJANGO_SETTINGS_MODULE: eduwisp_server.settings
+  register: eduwisp_verifica_celery
+  until: eduwisp_verifica_celery.rc == 0
+  retries: 6
+  delay: 5
+  changed_when: false
+
+- name: Nessuna migrazione in sospeso
+  become: true
+  become_user: "{{ eduwisp_user }}"
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py migrate --check"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  changed_when: false
+
+- name: Servizi attivi
+  ansible.builtin.command: "systemctl is-active {{ item }}"
+  loop: [eduwisp, eduwisp-worker, eduwisp-beat]
+  changed_when: false

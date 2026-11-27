@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+# {{ ansible_managed }}
+"""Codice HTTP di una pagina chiesta direttamente a gunicorn, senza passare da nginx.
+Uso: eduwisp-verifica-http <percorso>"""
+import http.client
+import socket
+import sys
+
+
+class UnixConnection(http.client.HTTPConnection):
+    def connect(self):
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(10)
+        self.sock.connect("/run/eduwisp/gunicorn.sock")
+
+
+conn = UnixConnection("{{ eduwisp_domains[0] }}")
+try:
+    conn.request("GET", sys.argv[1], headers={"X-Forwarded-Proto": "https"})
+    print(conn.getresponse().status)
+except OSError as e:
+    print(f"errore: {e}")

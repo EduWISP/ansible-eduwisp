@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+- name: Percorso del punto di ripristino
+  ansible.builtin.set_fact:
+    eduwisp_punto_ripristino: "{{ eduwisp_upgrade_dir }}/{{ now(fmt='%Y%m%d-%H%M%S') }}"
+
+- name: Cartella del punto di ripristino
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop: ["{{ eduwisp_upgrade_dir }}", "{{ eduwisp_punto_ripristino }}"]
+
+- name: Backup cifrato con BorgBackup
+  ansible.builtin.systemd_service:
+    name: eduwisp-backup.service
+    state: started
+  when: eduwisp_upgrade_borg | bool
+
+- name: Esito del backup con BorgBackup
+  ansible.builtin.command: systemctl show -p Result --value eduwisp-backup.service
+  register: eduwisp_esito_borg
+  changed_when: false
+  failed_when: eduwisp_esito_borg.stdout != 'success'
+  when: eduwisp_upgrade_borg | bool
+
+- name: Copia del database
+  ansible.builtin.shell: |
+    set -o pipefail
+    umask 077
+    runuser -u postgres -- pg_dump -Fc {{ eduwisp_db_name | quote }} > {{ (eduwisp_punto_ripristino + '/database.dump') | quote }}
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Copia dell'ambiente Python e del progetto
+  ansible.builtin.command: "cp -a {{ eduwisp_home }}/{{ item }} {{ eduwisp_punto_ripristino }}/{{ item }}"
+  loop: [venv, project]
+  changed_when: true
+
+- name: Versioni installate prima dell'aggiornamento
+  ansible.builtin.copy:
+    content: "{{ eduwisp_pip_freeze.stdout }}\n"
+    dest: "{{ eduwisp_punto_ripristino }}/pip-freeze.txt"
+    mode: "0600"

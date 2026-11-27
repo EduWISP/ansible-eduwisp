@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+---
+- name: Certificato TLS presente?
+  ansible.builtin.stat:
+    path: "{{ eduwisp_tls_certificate }}"
+  register: eduwisp_cert_app
+
+- name: Progetto Django
+  vars:
+    eduwisp_tls: "{{ eduwisp_cert_app.stat.exists }}"
+  ansible.builtin.template:
+    src: "project/{{ item.src }}"
+    dest: "{{ eduwisp_home }}/project/{{ item.dest }}"
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "{{ item.mode | default('0640') }}"
+  loop:
+    - { src: manage.py.j2, dest: manage.py, mode: "0750" }
+    - { src: __init__.py.j2, dest: eduwisp_server/__init__.py }
+    - { src: settings.py.j2, dest: eduwisp_server/settings.py }
+    - { src: urls.py.j2, dest: eduwisp_server/urls.py }
+    - { src: wsgi.py.j2, dest: eduwisp_server/wsgi.py }
+    - { src: celery.py.j2, dest: eduwisp_server/celery.py }
+  notify: [Riavvia eduwisp, Riavvia eduwisp-worker, Riavvia eduwisp-beat]
+
+- name: Migrazioni del database
+  become: true
+  become_user: "{{ eduwisp_user }}"
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py migrate --noinput"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  register: eduwisp_migrate
+  changed_when: "'No migrations to apply' not in eduwisp_migrate.stdout"
+
+- name: File statici
+  ansible.builtin.command: "{{ eduwisp_home }}/venv/bin/python manage.py collectstatic --noinput"
+  args:
+    chdir: "{{ eduwisp_home }}/project"
+  register: eduwisp_static
+  changed_when: eduwisp_static.stdout is not search('(^|\\s)0 static files copied', multiline=True)

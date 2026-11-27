@@ -10,3 +10,5 @@
 - Monitoraggio con Monit, avvisi via email (msmtp), avviso sui fallimenti dei backup, riepilogo quotidiano di sicurezza (#7). / *Monit monitoring, email alerts, backup failure alerts, daily security summary.*
 - Amministratore gestito da Ansible con password dal vault. / *Admin account managed from the vault.*
 - Limiti di richieste su nginx e conservazione dei log a 90 giorni al massimo (#8). / *nginx rate limiting and 90-day log retention.*
+- Rilascio della piattaforma 0.1.0 con le versioni dei moduli fissate per commit; il ruolo non aggiorna più i moduli da solo. / *Platform release 0.1.0 pinning module commits; the role no longer upgrades modules implicitly.*
+- Aggiornamento con un solo comando (`aggiorna.yml`): punto di ripristino, pagina di manutenzione, migrazioni, verifica e **ripristino automatico** in caso di errore, con avviso email (#9). / *One-command upgrade with restore point, maintenance page, verification and automatic rollback.*
