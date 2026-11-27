@@ -9,8 +9,10 @@ set mail-format {
   message: $DATE — $SERVICE: $DESCRIPTION
 }
 set alert {{ eduwisp_alert_email }} not on { instance, action }
-set httpd unixsocket /run/monit.sock
-    allow root
+# Solo root può usare il socket; "allow localhost" serve perché Monit avvii l'interfaccia.
+# ("allow root" funzionava solo se il DNS risolveva per caso il nome "root").
+set httpd unixsocket /run/monit.sock uid root gid root permission 0600
+    allow localhost
 
 {% for servizio in ['nginx', 'eduwisp', 'eduwisp-worker', 'eduwisp-beat', 'postgresql', 'valkey-server', 'suricata', 'fail2ban', 'nftables', 'auditd'] %}
 check program servizio-{{ servizio }} with path "/usr/bin/systemctl is-active --quiet {{ servizio }}"

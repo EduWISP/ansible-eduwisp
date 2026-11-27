@@ -24,7 +24,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Attività in background | **Valkey** (solo socket Unix locale, con password, persistenza AOF) e **Celery** worker e beat, isolati come gunicorn |
 | Dati | PostgreSQL 17 con autenticazione locale (nessuna password), configurazione non leggibile da altri utenti |
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza, **limiti di richieste** su registrazione dei dispositivi e accesso all'amministrazione (429); **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
-| Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio locale o remoto via SSH (consigliato: remoto in modalità *append-only*) |
+| Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio remoto via SSH sul **server di backup dedicato** ([`ansible-eduwisp-backup`](https://github.com/EduWISP/ansible-eduwisp-backup), ADR-0017), in sola aggiunta; l'archivio locale resta solo per le prove |
 | Monitoraggio e avvisi | **Monit** (servizi, disco, memoria, carico, risposta HTTPS e scadenza del certificato), invio della posta con **msmtp** tramite un relay SMTP autenticato, **avviso immediato** se il backup o la prova di ripristino falliscono, **riepilogo quotidiano** di sicurezza (allarmi Suricata, fail2ban, backup, certificato, aggiornamenti) |
 | Amministratore | Creato o aggiornato da Ansible con la password presa dal vault (almeno 12 caratteri), senza mai mostrarla nei log |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
@@ -56,6 +56,12 @@ eduwisp_admin_password: "{{ vault_admin_password }}"
 ```
 
 Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) vengono **generati sul server** alla prima installazione. Esporta subito chiave e passphrase di Borg e conservale fuori dal server: senza di esse i backup sono illeggibili.
+
+### Backup remoto
+
+1. Imposta `eduwisp_backup_repo: "ssh://borg@<server-di-backup>:<porta>/srv/borg/repos/<nome-del-server>"` e applica il ruolo: crea la chiave `/root/.ssh/eduwisp_backup` (l'inizializzazione dell'archivio fallisce finché il server di backup non la conosce).
+2. Copia `/root/.ssh/eduwisp_backup.pub` in `eduwisp_bk_clients` di [`ansible-eduwisp-backup`](https://github.com/EduWISP/ansible-eduwisp-backup) e applica quel ruolo.
+3. Applica di nuovo questo ruolo: crea l'archivio cifrato. Esporta subito chiave (`borg key export --paper`) e passphrase.
 
 ## Dati di esempio (solo demo) / Demo data
 
