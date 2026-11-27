@@ -67,11 +67,11 @@ Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) ven
 
 ## Dati di esempio (solo demo) / Demo data
 
-Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato**: 6 sezioni (A-D ordinamento, E-F scienze applicate) per 5 anni, cioè 30 classi, circa 700 studenti, preside, amministratore IT, docenti con le discipline del liceo, coordinatori, sostegno, tablet personali per il biennio e un carrello condiviso per sezione. Dal rilascio 0.3.0 anche le **famiglie** (ADR-0018): un referente per ogni studente e spesso un secondo genitore, casi con un solo genitore, tutori, affidatari, collegamenti disattivati e fratelli. Dal rilascio 0.4.0 anche le **date della maggiore età** e le scelte degli studenti maggiorenni sull'accesso dei familiari. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
+Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato** e piccolo: 2 sezioni (A ordinamento, B scienze applicate) per 5 anni, cioè 10 classi, 50 studenti, 13 docenti, famiglie, tablet personali per il biennio e un carrello per sezione, catalogo di app con Teams e MyLIM obbligatorie. Crea anche l'utente pubblico **`demo`** (password `demo`) **in sola lettura**: vede tutto, anche con «Vedi come», ma non può modificare nulla. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
 
 Funziona solo se è impostato `eduwisp_environment_notice` (ambiente di prova, ADR-0015) e carica i dati una volta sola; `eduwisp_demo_data_reset: true` li ricrea da zero.
 
-🇬🇧 *`eduwisp_demo_data: true` loads a made-up scientific high school (6 sections × 5 years, ~700 students, teachers, devices). Test environments only; fully fictitious.*
+🇬🇧 *`eduwisp_demo_data: true` loads a small made-up scientific high school (10 classes, 50 students, 13 teachers, families, tablets) and a public read-only `demo`/`demo` account. Test environments only; fully fictitious.*
 
 ## Aggiornamento / Upgrade
 

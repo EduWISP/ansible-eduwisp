@@ -13,4 +13,4 @@ eduwisp_platform_modules:
   - { name: eduwisp-school, version: 2064e18e9cebc7ff7e0aa12b375d34e0401e7441 }
   - { name: eduwisp-devices, version: 0b0cec76e1ed69406aac1486cd773be1d9b174e3 }
   - { name: eduwisp-apps, version: 59a9e5eb6ca8f3f51cb396b08d6c6f8dfa428bdd }
-  - { name: eduwisp-portal, version: 752a63563764c6b6e6f9662403a8eec426263397 }
+  - { name: eduwisp-portal, version: b1928da6e922c9a06317baf16eb51a844c0bd53d }
