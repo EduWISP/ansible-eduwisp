@@ -36,3 +36,20 @@
   ansible.builtin.systemd_service:
     name: nginx
     state: reloaded
+
+- name: Riavvia valkey
+  ansible.builtin.systemd_service:
+    name: valkey-server
+    state: restarted
+
+- name: Riavvia eduwisp-worker
+  ansible.builtin.systemd_service:
+    name: eduwisp-worker
+    state: restarted
+  failed_when: false
+
+- name: Riavvia eduwisp-beat
+  ansible.builtin.systemd_service:
+    name: eduwisp-beat
+    state: restarted
+  failed_when: false

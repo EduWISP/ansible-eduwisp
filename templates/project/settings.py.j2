@@ -80,6 +80,17 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
 }
 
+# Celery con Valkey (ADR-0016): solo socket Unix locale, password in /etc/eduwisp.
+_VALKEY_PASSWORD = Path("/etc/eduwisp/valkey_password").read_text().strip()
+CELERY_BROKER_URL = f"redis+socket://:{_VALKEY_PASSWORD}@/run/valkey/valkey-server.sock"
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_TIME_LIMIT = 600
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BEAT_SCHEDULE = {}
+
 # EduWISP
 EDUWISP_SERVER_URL = "https://{{ eduwisp_domains[0] }}"
 EDUWISP_ENVIRONMENT_NOTICE = {{ eduwisp_environment_notice | to_json }}

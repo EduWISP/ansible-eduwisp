@@ -12,6 +12,7 @@
     - { path: "{{ eduwisp_home }}/project/eduwisp_server", owner: root }
     - { path: "{{ eduwisp_home }}/static", owner: root, mode: "0755" }
     - { path: /etc/eduwisp, owner: root }
+    - { path: /var/lib/eduwisp, mode: "0750" }
 
 - name: Chiave segreta di Django (generata una sola volta sul server)
   ansible.builtin.shell: |
@@ -27,12 +28,29 @@
     group: "{{ eduwisp_user }}"
     mode: "0640"
 
+- name: Password di Valkey (generata una sola volta sul server)
+  ansible.builtin.shell: |
+    umask 027
+    python3 -c 'import secrets; print(secrets.token_urlsafe(48))' > /etc/eduwisp/valkey_password
+  args:
+    creates: /etc/eduwisp/valkey_password
+
+- name: Permessi della password di Valkey
+  ansible.builtin.file:
+    path: /etc/eduwisp/valkey_password
+    owner: root
+    group: "{{ eduwisp_user }}"
+    mode: "0640"
+
 - name: Ambiente virtuale e dipendenze
   ansible.builtin.pip:
     name:
       - "{{ eduwisp_django_requirement }}"
       - gunicorn
       - "psycopg[binary]"
+      - "celery[redis]>=5.5,<6"
+      - packaging
+      - "redis>=5"
     virtualenv: "{{ eduwisp_home }}/venv"
     virtualenv_command: python3 -m venv
   notify: Riavvia eduwisp
@@ -73,7 +91,8 @@
     - { src: settings.py.j2, dest: eduwisp_server/settings.py }
     - { src: urls.py.j2, dest: eduwisp_server/urls.py }
     - { src: wsgi.py.j2, dest: eduwisp_server/wsgi.py }
-  notify: Riavvia eduwisp
+    - { src: celery.py.j2, dest: eduwisp_server/celery.py }
+  notify: [Riavvia eduwisp, Riavvia eduwisp-worker, Riavvia eduwisp-beat]
 
 - name: Migrazioni del database
   become: true

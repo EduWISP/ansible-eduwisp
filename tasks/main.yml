@@ -21,5 +21,7 @@
   tags: [database]
 - ansible.builtin.import_tasks: app.yml
   tags: [app]
+- ansible.builtin.import_tasks: queue.yml
+  tags: [queue, app]
 - ansible.builtin.import_tasks: web.yml
   tags: [web]

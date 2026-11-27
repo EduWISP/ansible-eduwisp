@@ -19,6 +19,7 @@ eduwisp_user: eduwisp
 eduwisp_home: /opt/eduwisp
 eduwisp_db_name: eduwisp
 eduwisp_gunicorn_workers: 3
+eduwisp_celery_concurrency: 2
 eduwisp_poll_interval_seconds: 900
 
 # DPC Android (contenuto del QR code di provisioning).

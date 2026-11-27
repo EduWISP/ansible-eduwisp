@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+[Unit]
+Description=EduWISP — attività pianificate (Celery beat)
+After=network.target postgresql.service valkey-server.service
+Requires=valkey-server.service
+
+[Service]
+Type=simple
+User={{ eduwisp_user }}
+Group={{ eduwisp_user }}
+SupplementaryGroups=valkey
+WorkingDirectory={{ eduwisp_home }}/project
+Environment=DJANGO_SETTINGS_MODULE=eduwisp_server.settings
+ExecStart={{ eduwisp_home }}/venv/bin/celery -A eduwisp_server beat --loglevel INFO --schedule /var/lib/eduwisp/celerybeat-schedule
+Restart=on-failure
+RestartSec=5
+
+# Isolamento (come eduwisp.service)
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+ReadOnlyPaths={{ eduwisp_home }}
+ReadWritePaths=/var/lib/eduwisp
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+# SPDX-License-Identifier: AGPL-3.0-or-later
+import os
+
+from celery import Celery
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "eduwisp_server.settings")
+
+app = Celery("eduwisp")
+app.config_from_object("django.conf:settings", namespace="CELERY")
+app.autodiscover_tasks()
+
+
+@app.task(name="eduwisp.ping")
+def ping():
+    """Attività di prova: verifica che worker e coda funzionino."""
+    return "pong"

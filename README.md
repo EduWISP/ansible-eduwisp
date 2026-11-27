@@ -21,6 +21,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Area | Componenti |
 |---|---|
 | Applicazione | Moduli EduWISP in un ambiente virtuale, Django 5.2 LTS, gunicorn come servizio systemd **isolato** (esposizione 1,7/10 secondo `systemd-analyze security`) |
+| Attività in background | **Valkey** (solo socket Unix locale, con password, persistenza AOF) e **Celery** worker e beat, isolati come gunicorn |
 | Dati | PostgreSQL 17 con autenticazione locale (nessuna password), configurazione non leggibile da altri utenti |
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza; **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
