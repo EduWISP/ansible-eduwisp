@@ -7,10 +7,10 @@
 eduwisp_platform_django: "Django>=5.2,<5.3"
 eduwisp_platform_modules:
   - { name: eduwisp-utils, version: 9d4f0ddb591e9378cf5baf53f9e8bb700f62be1a }
-  - { name: eduwisp-protocol, version: cf313cca050de7cdf18941d384e0b951a6ab97d5 }
+  - { name: eduwisp-protocol, version: f13b8f6dd6471e0320d539bff0b9f6685a6ad718 }
   - { name: eduwisp-users, version: f26afd3f174a053b007fcd7bca0bfb44d19af5a9 }
   - { name: eduwisp-audit, version: f041d402bef042c8482e496cb3b30af6e6bebc69 }
   - { name: eduwisp-school, version: 2064e18e9cebc7ff7e0aa12b375d34e0401e7441 }
   - { name: eduwisp-devices, version: 0b0cec76e1ed69406aac1486cd773be1d9b174e3 }
-  - { name: eduwisp-apps, version: 59a9e5eb6ca8f3f51cb396b08d6c6f8dfa428bdd }
+  - { name: eduwisp-apps, version: 382733e1c568c51a534d5e49cb1da95ab6ef4b5a }
   - { name: eduwisp-portal, version: c1f56af5abf7acfb999825bbcbc6e4faab68a71e }
