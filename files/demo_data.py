@@ -23,7 +23,7 @@ from django.utils import timezone
 
 from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy
 try:  # app consentite dal rilascio 0.5.0 (ADR-0019)
-    from eduwisp_apps.models import App, AppPolicyState, AppRule, TemporaryUnlock
+    from eduwisp_apps.models import App, AppPolicyState, AppRule, RequiredApp, TemporaryUnlock
 except ImportError:
     App = None
 from eduwisp_devices.secrets import hash_secret, new_secret
@@ -116,7 +116,7 @@ def elimina():
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
     if App is not None:
-        for model in (TemporaryUnlock, AppRule, App, AppPolicyState):
+        for model in (TemporaryUnlock, RequiredApp, AppRule, App, AppPolicyState):
             model.objects.filter(organization=org).delete()
     for model in (
         Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy
@@ -320,20 +320,24 @@ def crea():
     return org
 
 
-# Catalogo di esempio: app libere o gratuite, più quelle di sistema dell'emulatore AOSP.
+# Catalogo dell'istituto di esempio (ADR-0019). Le app di istruzione, ufficio e comunicazione
+# (Classroom, Teams, MyLIM, WhatsApp, Firefox...) sono già consentite dal catalogo della
+# piattaforma; qui solo le aggiunte del liceo e le app di sistema dell'emulatore AOSP.
 CATALOGO = [
     # (nome, pacchetto, ambito): "istituto", "applicate" (indirizzo) o None (solo da sbloccare)
-    ("Firefox", "org.mozilla.firefox", "istituto"),
-    ("Wikipedia", "org.wikipedia", "istituto"),
-    ("Collabora Office", "com.collabora.libreoffice", "istituto"),
-    ("GeoGebra", "org.geogebra.android.calculator.suite", "istituto"),
     ("Impostazioni", "com.android.settings", "istituto"),
     ("File", "com.android.documentsui", "istituto"),
+    ("Calcolatrice", "com.android.calculator2", "istituto"),
     ("Acode (editor di codice)", "com.foxdebug.acode", "applicate"),
     ("Fotocamera", "com.android.camera2", None),
     ("Galleria", "com.android.gallery3d", None),
     ("Registratore", "com.android.soundrecorder", None),
     ("Mappe (OsmAnd)", "net.osmand.plus", None),
+]
+# App obbligatorie scelte dal liceo di esempio: ogni istituto decide le proprie.
+OBBLIGATORIE = [
+    ("Microsoft Teams", "com.microsoft.teams"),
+    ("MyLIM (Loescher)", "it.maieuticallabs.mylim"),
 ]
 
 
@@ -344,6 +348,8 @@ def catalogo_app(org, ordinamento, applicate):
             AppRule.objects.create(organization=org, app=app)
         elif ambito == "applicate":
             AppRule.objects.create(organization=org, app=app, track=applicate)
+    for nome, pacchetto in OBBLIGATORIE:
+        RequiredApp.objects.create(organization=org, name=nome, identifier=pacchetto)
     AppPolicyState.objects.update_or_create(organization=org, defaults={"allowlist_enabled": True})
 
 
