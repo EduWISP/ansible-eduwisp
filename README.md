@@ -65,6 +65,26 @@ Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) ven
 2. Copia `/root/.ssh/eduwisp_backup.pub` in `eduwisp_bk_clients` di [`ansible-eduwisp-backup`](https://github.com/EduWISP/ansible-eduwisp-backup) e applica quel ruolo.
 3. Applica di nuovo questo ruolo: crea l'archivio cifrato. Esporta subito chiave (`borg key export --paper`) e passphrase.
 
+## Registrazione dei tablet con il QR code / Tablet enrollment
+
+Il QR code che EduWISP mostra per ogni token di registrazione fa scaricare al tablet il DPC da `https://<server>/dpc/eduwisp-dpc.apk` e ne verifica la firma. Serve quindi un **APK di rilascio firmato** con una chiave dell'istituto o del progetto:
+
+1. genera una volta la chiave di firma e conservala nel vault (con una copia fuori dal computer: senza di essa i tablet registrati non si aggiornano);
+2. compila e firma l'APK di rilascio di [`eduwisp-android-dpc`](https://github.com/EduWISP/eduwisp-android-dpc) con `apksigner`;
+3. nell'inventario indica il file e l'impronta del certificato (SHA-256 in base64url, da `apksigner verify --print-certs`):
+
+```yaml
+eduwisp_android_dpc_apk: /percorso/eduwisp-dpc-0.5.0.apk
+eduwisp_android_dpc:
+  component_name: org.eduwisp.dpc/.EduWispAdminReceiver
+  download_url: "https://eduwisp.scuola.example/dpc/eduwisp-dpc.apk"
+  signature_checksum: "<impronta>"
+```
+
+Il ruolo pubblica l'APK e si ferma se manca l'impronta. Il QR mantiene attive le app di sistema (decide l'elenco di app consentite), imposta lingua italiana e fuso orario di Roma.
+
+🇬🇧 *The enrollment QR code makes the tablet download the signed release DPC from `/dpc/eduwisp-dpc.apk` and check its signature; set `eduwisp_android_dpc_apk` and `signature_checksum` in the inventory.*
+
 ## Dati di esempio (solo demo) / Demo data
 
 Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato** e piccolo: 2 sezioni (A ordinamento, B scienze applicate) per 5 anni, cioè 10 classi, 50 studenti, 13 docenti, famiglie, tablet personali per il biennio e un carrello per sezione, catalogo di app con Teams e MyLIM obbligatorie, richieste di app di esempio (in attesa con parere della famiglia, approvata, respinta perché vietata) e un'app del PDP per un solo studente. Crea anche l'utente pubblico **`demo`** (password `demo`) **in sola lettura**: vede tutto, anche con «Vedi come», ma non può modificare nulla. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
@@ -80,7 +100,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.7.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.7.1
 ```
 
 La procedura:

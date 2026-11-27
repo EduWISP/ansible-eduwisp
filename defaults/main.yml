@@ -12,7 +12,7 @@ eduwisp_demo_data: false
 eduwisp_demo_data_reset: false
 
 # Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
-eduwisp_platform_release: "0.7.0"
+eduwisp_platform_release: "0.7.1"
 # Solo per lo sviluppo: moduli e versioni (rami o commit) al posto del rilascio.
 # Esempio: [{ name: eduwisp-users, version: main }, ...]
 eduwisp_modules: []
@@ -38,7 +38,11 @@ eduwisp_poll_interval_seconds: 900
 eduwisp_android_dpc:
   component_name: org.eduwisp.dpc/.EduWispAdminReceiver
   download_url: "https://{{ eduwisp_domains[0] }}/dpc/eduwisp-dpc.apk"
+  # Impronta SHA-256 del certificato di firma, in base64url (apksigner verify --print-certs).
   signature_checksum: ""
+# APK firmato del DPC sul computer da cui si lancia Ansible: il ruolo lo pubblica in /dpc/,
+# da dove i tablet lo scaricano durante la registrazione con il QR code. Vuoto = non pubblicato.
+eduwisp_android_dpc_apk: ""
 
 # TLS: il certificato è fornito dall'esterno (per esempio ACME via DNS con un altro ruolo).
 # Se i file esistono, nginx serve HTTPS; altrimenti solo HTTP con /admin/ limitato alle reti locali.

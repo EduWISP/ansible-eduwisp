@@ -16,6 +16,8 @@
     # Loghi delle app, letti da nginx (gruppo eduwisp); APK non pubblici (ADR-0020).
     - { path: "{{ eduwisp_home }}/media" }
     - { path: /var/lib/eduwisp/privato, mode: "0700" }
+    # APK del DPC per la registrazione con il QR code, servito da nginx.
+    - { path: "{{ eduwisp_home }}/dpc", owner: root }
 
 - name: Chiave segreta di Django (generata una sola volta sul server)
   ansible.builtin.shell: |
@@ -147,3 +149,21 @@
     - name: Esito dei dati di esempio
       ansible.builtin.debug:
         msg: "{{ eduwisp_demo_result.stdout_lines | last }}"
+
+- name: APK del DPC per la registrazione con il QR code
+  when: eduwisp_android_dpc_apk | length > 0
+  block:
+    - name: Pubblica l'APK firmato
+      ansible.builtin.copy:
+        src: "{{ eduwisp_android_dpc_apk }}"
+        dest: "{{ eduwisp_home }}/dpc/eduwisp-dpc.apk"
+        owner: root
+        group: "{{ eduwisp_user }}"
+        mode: "0640"
+
+    - name: L'impronta della firma deve essere indicata
+      ansible.builtin.assert:
+        that: eduwisp_android_dpc.signature_checksum | length > 0
+        fail_msg: >-
+          Manca eduwisp_android_dpc.signature_checksum: senza impronta Android non accetta
+          il DPC durante la registrazione con il QR code.
