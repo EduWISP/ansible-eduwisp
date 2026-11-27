@@ -67,7 +67,7 @@ Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) ven
 
 ## Dati di esempio (solo demo) / Demo data
 
-Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato** e piccolo: 2 sezioni (A ordinamento, B scienze applicate) per 5 anni, cioè 10 classi, 50 studenti, 13 docenti, famiglie, tablet personali per il biennio e un carrello per sezione, catalogo di app con Teams e MyLIM obbligatorie. Crea anche l'utente pubblico **`demo`** (password `demo`) **in sola lettura**: vede tutto, anche con «Vedi come», ma non può modificare nulla. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
+Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato** e piccolo: 2 sezioni (A ordinamento, B scienze applicate) per 5 anni, cioè 10 classi, 50 studenti, 13 docenti, famiglie, tablet personali per il biennio e un carrello per sezione, catalogo di app con Teams e MyLIM obbligatorie, richieste di app di esempio (in attesa con parere della famiglia, approvata, respinta perché vietata) e un'app del PDP per un solo studente. Crea anche l'utente pubblico **`demo`** (password `demo`) **in sola lettura**: vede tutto, anche con «Vedi come», ma non può modificare nulla. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
 
 Funziona solo se è impostato `eduwisp_environment_notice` (ambiente di prova, ADR-0015) e carica i dati una volta sola; `eduwisp_demo_data_reset: true` li ricrea da zero.
 
@@ -80,7 +80,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.6.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.7.0
 ```
 
 La procedura:

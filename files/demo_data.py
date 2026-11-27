@@ -28,6 +28,10 @@ try:  # app consentite dal rilascio 0.5.0 (ADR-0019)
     from eduwisp_apps.models import App, AppPolicyState, AppRule, TemporaryUnlock
 except ImportError:
     App = None
+try:  # richieste di app dal rilascio 0.7.0 (ADR-0021)
+    from eduwisp_apps.models import AppRequest
+except ImportError:
+    AppRequest = None
 from eduwisp_devices.secrets import hash_secret, new_secret
 from eduwisp_school.models import (
     AssignmentKind,
@@ -118,6 +122,8 @@ def elimina():
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
     if App is not None:
+        if AppRequest is not None:
+            AppRequest.objects.filter(organization=org).delete()
         for model in (TemporaryUnlock, AppRule, App, AppPolicyState):
             model.objects.filter(organization=org).delete()
     for model in (
@@ -356,6 +362,54 @@ def catalogo_app(org, ordinamento, applicate):
         app = App.objects.create(organization=org, name=nome, identifier=pacchetto)
         AppRule.objects.create(organization=org, app=app, required=True)
     AppPolicyState.objects.update_or_create(organization=org, defaults={"allowlist_enabled": True})
+    if AppRequest is not None:
+        richieste_esempio(org)
+
+
+def richieste_esempio(org):
+    """Richieste di app di esempio (ADR-0021) e un'app del PDP per un solo studente."""
+    from eduwisp_apps.requests import add_opinion, decide
+
+    def studente_con_famiglia(sezione, anno, salta=0):
+        iscritti = Student.objects.filter(
+            enrollments__school_class__section__name=sezione,
+            enrollments__school_class__year_number=anno,
+            guardians__is_primary=True,
+            adult_on__gt=date.today(),
+        ).distinct().order_by("display_name")
+        return iscritti[salta]
+
+    def classe_di(studente):
+        return studente.enrollments.select_related("school_class").first().school_class
+
+    def docente_di(classe):
+        return TeachingAssignment.objects.filter(section=classe.section).order_by("pk").first().teacher
+
+    # In attesa, con il parere favorevole di un genitore
+    a = studente_con_famiglia("A", 2)
+    r = AppRequest.objects.create(
+        organization=org, student=a, school_class=classe_di(a),
+        identifier="it.esempio.dizionariolatino", name="Dizionario di latino",
+        note="Mi serve per le versioni a casa.",
+    )
+    add_opinion(a.guardians.get(is_primary=True).user, r, "Lo usa per i compiti di latino.")
+    # Approvata da un docente della classe: consentita solo per quello studente
+    b = studente_con_famiglia("B", 1)
+    r = AppRequest.objects.create(
+        organization=org, student=b, school_class=classe_di(b),
+        identifier="org.example.atlantestorico", name="Atlante storico",
+    )
+    decide(docente_di(classe_di(b)), r, True, "Utile per il progetto di storia del secondo periodo.")
+    # Vietata: respinta subito
+    c = studente_con_famiglia("A", 1)
+    AppRequest.objects.create(
+        organization=org, student=c, school_class=classe_di(c),
+        identifier="com.zhiliaoapp.musically", name="TikTok", status="rejected",
+        decision_reason="App vietata in tutti gli istituti (ADR-0019): non si può approvare.",
+    )
+    # Strumento del PDP per un solo studente, senza motivo registrato (FAQ 12 del Garante)
+    registratore = App.objects.get(organization=org, identifier="com.android.soundrecorder")
+    AppRule.objects.create(organization=org, app=registratore, student=studente_con_famiglia("A", 1, 1))
 
 
 def utente_demo():
