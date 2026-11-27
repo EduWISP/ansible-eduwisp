@@ -2,8 +2,9 @@
 # Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
 """Dati di esempio per l'ambiente demo (ADR-0015). TUTTI INVENTATI: nessuna persona reale.
 
-Liceo scientifico con 6 sezioni (A-F) e 5 anni: 30 classi. Sezioni E ed F all'opzione
-scienze applicate. Tablet personali per il biennio, un carrello condiviso per il triennio.
+Liceo scientifico piccolo: 2 sezioni (A ordinamento, B scienze applicate) e 5 anni, cioè
+10 classi, 50 studenti e 13 docenti. Tablet personali per il biennio, un carrello condiviso
+per sezione.
 Famiglie (ADR-0018): un referente per studente e spesso un secondo familiare; casi con un solo
 genitore, tutori, affidatari, un collegamento disattivato e fratelli nello stesso istituto.
 Maggiorenni: data della maggiore età per tutti; chi è già maggiorenne ha scelto (o non ancora)
@@ -21,7 +22,12 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy
+from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy, EnrollmentToken
+from django.contrib.auth.models import Group
+try:  # app consentite dal rilascio 0.5.0 (ADR-0019)
+    from eduwisp_apps.models import App, AppPolicyState, AppRule, RequiredApp, TemporaryUnlock
+except ImportError:
+    App = None
 from eduwisp_devices.secrets import hash_secret, new_secret
 from eduwisp_school.models import (
     AssignmentKind,
@@ -42,9 +48,9 @@ from eduwisp_users.models import Membership, Organization, Role
 SLUG = "liceo-esempio"
 NOME = "Liceo Scientifico «Città di Esempio» (dati fittizi)"
 DOMINIO_EMAIL = "liceo-esempio.invalid"  # .invalid: dominio riservato, non esiste (RFC 2606)
-SEZIONI = "ABCDEF"
-SCIENZE_APPLICATE = "EF"
-STUDENTI_PER_CLASSE = (22, 26, 24, 23, 21)  # dal primo al quinto anno
+SEZIONI = "AB"
+SCIENZE_APPLICATE = "B"
+STUDENTI_PER_CLASSE = (5, 5, 5, 5, 5)  # dal primo al quinto anno: 50 studenti
 
 NOMI = """Alessandro Alice Andrea Anna Antonio Arianna Aurora Beatrice Bianca Camilla Carlo Caterina
 Chiara Christian Cristina Daniele Davide Diego Edoardo Elena Elisa Emanuele Emma Enea Federica
@@ -74,8 +80,6 @@ DISCIPLINE = [
 ]
 SOLO_ORDINAMENTO = [("Lingua e cultura latina", (1, 2, 3, 4, 5))]
 SOLO_SCIENZE_APPLICATE = [("Informatica", (1, 2, 3, 4, 5))]
-# Discipline che lo stesso docente copre in due sezioni (cattedre su più corsi).
-CONDIVISE = {"Scienze motorie e sportive", "Religione cattolica", "Disegno e storia dell'arte"}
 
 rnd = random.Random(2026)  # sempre gli stessi dati
 User = get_user_model()
@@ -106,13 +110,19 @@ def utente(ruolo_org, org, prefisso="", cognome=None):
     return user
 
 
+@transaction.atomic
 def elimina():
+    """Tutto o niente: un errore non lascia la demo a metà."""
     org = Organization.objects.filter(slug=SLUG).first()
     if org is None:
         return
     utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
+    if App is not None:
+        for model in (TemporaryUnlock, RequiredApp, AppRule, App, AppPolicyState):
+            model.objects.filter(organization=org).delete()
     for model in (
-        Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy
+        Guardian, DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy,
+        EnrollmentToken,
     ):
         model.objects.filter(organization=org).delete()
     for model in (SchoolClass, Student, Section, Track, SchoolYear, Site):
@@ -185,7 +195,7 @@ def crea():
     studenti = [st for elenco in iscritti.values() for st in elenco]
     rnd.shuffle(studenti)
     fratelli = {}
-    for primo, secondo in zip(studenti[0:60:2], studenti[1:60:2]):  # 30 coppie di fratelli
+    for primo, secondo in zip(studenti[0:12:2], studenti[1:12:2]):  # 6 coppie di fratelli
         cognome = primo.display_name.split(" ")[0]
         secondo.display_name = f"{cognome} {secondo.display_name.split(' ', 1)[1]}"
         secondo.save(update_fields=["display_name"])
@@ -229,8 +239,8 @@ def crea():
             SOLO_SCIENZE_APPLICATE if lettera in SCIENZE_APPLICATE else SOLO_ORDINAMENTO
         )
         for disciplina, anni in discipline:
-            chiave = (disciplina, i // 2)  # sezioni A-B, C-D, E-F condividono il docente
-            if disciplina in CONDIVISE and chiave in condivisi:
+            chiave = disciplina  # un docente per disciplina, in entrambe le sezioni
+            if chiave in condivisi:
                 docente = condivisi[chiave]
             else:
                 docente = utente(Role.TEACHER, org)
@@ -259,7 +269,7 @@ def crea():
             section=sezioni[lettera], school_class=classe, kind=AssignmentKind.COORDINATORE,
         )
     # Due docenti di sostegno (RC-013: nessun abbinamento al singolo studente)
-    for lettera, n in (("B", 1), ("D", 3)):
+    for lettera, n in (("A", 1),):
         TeachingAssignment.objects.create(
             organization=org, teacher=utente(Role.TEACHER, org), school_year=anno,
             section=sezioni[lettera], school_class=classi[lettera, n],
@@ -305,10 +315,61 @@ def crea():
             for studente in iscritti[classe]:
                 tablet(classe, studente)
     for lettera in SEZIONI:
-        for _ in range(12):
+        for _ in range(6):
             tablet(classi[lettera, 3])  # carrello della sezione, in prestito alla terza
 
+    if App is not None:
+        catalogo_app(org, ordinamento, applicate)
     return org
+
+
+# Catalogo dell'istituto di esempio (ADR-0019). Le app di istruzione, ufficio e comunicazione
+# (Classroom, Teams, MyLIM, WhatsApp, Firefox...) sono già consentite dal catalogo della
+# piattaforma; qui solo le aggiunte del liceo e le app di sistema dell'emulatore AOSP.
+CATALOGO = [
+    # (nome, pacchetto, ambito): "istituto", "applicate" (indirizzo) o None (solo da sbloccare)
+    ("Impostazioni", "com.android.settings", "istituto"),
+    ("File", "com.android.documentsui", "istituto"),
+    ("Calcolatrice", "com.android.calculator2", "istituto"),
+    ("Acode (editor di codice)", "com.foxdebug.acode", "applicate"),
+    ("Fotocamera", "com.android.camera2", None),
+    ("Galleria", "com.android.gallery3d", None),
+    ("Registratore", "com.android.soundrecorder", None),
+    ("Mappe (OsmAnd)", "net.osmand.plus", None),
+]
+# App obbligatorie scelte dal liceo di esempio: ogni istituto decide le proprie.
+OBBLIGATORIE = [
+    ("Microsoft Teams", "com.microsoft.teams"),
+    ("MyLIM (Loescher)", "it.maieuticallabs.mylim"),
+]
+
+
+def catalogo_app(org, ordinamento, applicate):
+    for nome, pacchetto, ambito in CATALOGO:
+        app = App.objects.create(organization=org, name=nome, identifier=pacchetto)
+        if ambito == "istituto":
+            AppRule.objects.create(organization=org, app=app)
+        elif ambito == "applicate":
+            AppRule.objects.create(organization=org, app=app, track=applicate)
+    for nome, pacchetto in OBBLIGATORIE:
+        RequiredApp.objects.create(organization=org, name=nome, identifier=pacchetto)
+    AppPolicyState.objects.update_or_create(organization=org, defaults={"allowlist_enabled": True})
+
+
+def utente_demo():
+    """Accesso pubblico alla demo: utente «demo», password «demo», in sola lettura.
+
+    Vede tutto come l'amministratore (anche il «vedi come»), ma il gruppo «sola-lettura» fa
+    rifiutare ogni modifica (eduwisp-portal). Solo negli ambienti di prova (ADR-0015).
+    """
+    gruppo, _ = Group.objects.get_or_create(name="sola-lettura")
+    demo, _ = User.objects.get_or_create(username="demo")
+    demo.first_name, demo.last_name = "Account", "dimostrativo"
+    demo.email = ""
+    demo.is_staff = demo.is_superuser = demo.is_active = True
+    demo.set_password("demo")  # volutamente debole: account pubblico e in sola lettura
+    demo.save()
+    demo.groups.add(gruppo)
 
 
 if os.environ.get("EDUWISP_DEMO_RESET") == "1":
@@ -327,3 +388,4 @@ else:
         "maggiorenni,",
         Device.objects.filter(organization=org).count(), "dispositivi",
     )
+utente_demo()

@@ -26,6 +26,7 @@ Ruolo Ansible per installare e aggiornare EduWISP su Debian GNU/Linux 13 (Trixie
 | Web | nginx con HTTPS (TLS 1.2/1.3), HSTS, header di sicurezza, **limiti di richieste** su registrazione dei dispositivi e accesso all'amministrazione (429); **certificato fornito dall'esterno** (per esempio ACME via DNS). Senza certificato: solo HTTP e `/admin/` limitato alle reti locali |
 | Backup | **BorgBackup** cifrato (repokey-blake2): dump notturno del database e della configurazione, conservazione 7/4/6, **prova di ripristino automatica mensile** in un database temporaneo. Archivio remoto via SSH sul **server di backup dedicato** ([`ansible-eduwisp-backup`](https://github.com/EduWISP/ansible-eduwisp-backup), ADR-0017), in sola aggiunta; l'archivio locale resta solo per le prove |
 | Monitoraggio e avvisi | **Monit** (servizi, disco, memoria, carico, risposta HTTPS e scadenza del certificato), invio della posta con **msmtp** tramite un relay SMTP autenticato, **avviso immediato** se il backup o la prova di ripristino falliscono, **riepilogo quotidiano** di sicurezza (allarmi Suricata, fail2ban, backup, certificato, aggiornamenti) |
+| App consentite | Dal rilascio 0.5.0: [`eduwisp-apps`](https://github.com/EduWISP/eduwisp-apps), elenco di app consentite per istituto, indirizzo e classe e sblocchi temporanei dei docenti (ADR-0019) |
 | Interfaccia per ruoli | Dal rilascio 0.3.0: [`eduwisp-portal`](https://github.com/EduWISP/eduwisp-portal) con le pagine di dirigente, docente e famiglia, l'area dell'amministratore e il **«vedi come» in sola lettura**, registrato in [`eduwisp-audit`](https://github.com/EduWISP/eduwisp-audit) (ADR-0018); accesso da `/accedi/` con lo stesso limite di richieste dell'amministrazione |
 | Amministratore | Creato o aggiornato da Ansible con la password presa dal vault (almeno 12 caratteri), senza mai mostrarla nei log |
 | Firewall | nftables: in ingresso solo SSH, HTTP, HTTPS e l'ICMP necessario; limite di nuove connessioni SSH |
@@ -66,11 +67,11 @@ Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) ven
 
 ## Dati di esempio (solo demo) / Demo data
 
-Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato**: 6 sezioni (A-D ordinamento, E-F scienze applicate) per 5 anni, cioè 30 classi, circa 700 studenti, preside, amministratore IT, docenti con le discipline del liceo, coordinatori, sostegno, tablet personali per il biennio e un carrello condiviso per sezione. Dal rilascio 0.3.0 anche le **famiglie** (ADR-0018): un referente per ogni studente e spesso un secondo genitore, casi con un solo genitore, tutori, affidatari, collegamenti disattivati e fratelli. Dal rilascio 0.4.0 anche le **date della maggiore età** e le scelte degli studenti maggiorenni sull'accesso dei familiari. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
+Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato** e piccolo: 2 sezioni (A ordinamento, B scienze applicate) per 5 anni, cioè 10 classi, 50 studenti, 13 docenti, famiglie, tablet personali per il biennio e un carrello per sezione, catalogo di app con Teams e MyLIM obbligatorie. Crea anche l'utente pubblico **`demo`** (password `demo`) **in sola lettura**: vede tutto, anche con «Vedi come», ma non può modificare nulla. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
 
 Funziona solo se è impostato `eduwisp_environment_notice` (ambiente di prova, ADR-0015) e carica i dati una volta sola; `eduwisp_demo_data_reset: true` li ricrea da zero.
 
-🇬🇧 *`eduwisp_demo_data: true` loads a made-up scientific high school (6 sections × 5 years, ~700 students, teachers, devices). Test environments only; fully fictitious.*
+🇬🇧 *`eduwisp_demo_data: true` loads a small made-up scientific high school (10 classes, 50 students, 13 teachers, families, tablets) and a public read-only `demo`/`demo` account. Test environments only; fully fictitious.*
 
 ## Aggiornamento / Upgrade
 
@@ -79,7 +80,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.4.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.5.0
 ```
 
 La procedura:
