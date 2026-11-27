@@ -11,6 +11,7 @@
 - Amministratore gestito da Ansible con password dal vault. / *Admin account managed from the vault.*
 - Limiti di richieste su nginx e conservazione dei log a 90 giorni al massimo (#8). / *nginx rate limiting and 90-day log retention.*
 - Rilascio della piattaforma 0.1.0 con le versioni dei moduli fissate per commit; il ruolo non aggiorna più i moduli da solo. / *Platform release 0.1.0 pinning module commits; the role no longer upgrades modules implicitly.*
+- Dati di esempio per la demo: liceo scientifico inventato con 6 sezioni e 5 anni (30 classi), studenti, docenti, incarichi e tablet; solo in ambienti di prova. / *Demo data: made-up scientific high school, test environments only.*
 - Rilascio 0.2.0: aggiunge `eduwisp-utils` con l'endpoint `/health/`, usato da Monit e dalla verifica dell'aggiornamento (eduwisp-utils#3). / *Release 0.2.0 adds `/health/`, used by Monit and upgrade checks.*
 - I servizi dell'applicazione non si fermano più quando PostgreSQL o Valkey si riavviano (`Wants=` al posto di `Requires=`): prima restavano spenti. / *App services no longer stop (and stay down) when PostgreSQL or Valkey restart.*
 - Aggiornamento con un solo comando (`aggiorna.yml`): punto di ripristino, pagina di manutenzione, migrazioni, verifica e **ripristino automatico** in caso di errore, con avviso email (#9). / *One-command upgrade with restore point, maintenance page, verification and automatic rollback.*

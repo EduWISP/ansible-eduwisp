@@ -1,0 +1,264 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michele Salerno e i contributori di EduWISP
+"""Dati di esempio per l'ambiente demo (ADR-0015). TUTTI INVENTATI: nessuna persona reale.
+
+Liceo scientifico con 6 sezioni (A-F) e 5 anni: 30 classi. Sezioni E ed F all'opzione
+scienze applicate. Tablet personali per il biennio, un carrello condiviso per il triennio.
+
+Uso: manage.py shell < demo_data.py   (EDUWISP_DEMO_RESET=1 per ricreare tutto)
+Idempotente: se l'istituto di esempio esiste già non cambia nulla.
+"""
+
+import os
+import random
+from datetime import date, timedelta
+
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
+
+from eduwisp_devices.models import Device, DeviceAssignment, DevicePolicy
+from eduwisp_devices.secrets import hash_secret, new_secret
+from eduwisp_school.models import (
+    AssignmentKind,
+    SchoolClass,
+    SchoolLevel,
+    SchoolYear,
+    Section,
+    Site,
+    Student,
+    StudentEnrollment,
+    TeachingAssignment,
+    Track,
+)
+from eduwisp_users.models import Membership, Organization, Role
+
+SLUG = "liceo-esempio"
+NOME = "Liceo Scientifico «Città di Esempio» (dati fittizi)"
+DOMINIO_EMAIL = "liceo-esempio.invalid"  # .invalid: dominio riservato, non esiste (RFC 2606)
+SEZIONI = "ABCDEF"
+SCIENZE_APPLICATE = "EF"
+STUDENTI_PER_CLASSE = (22, 26, 24, 23, 21)  # dal primo al quinto anno
+
+NOMI = """Alessandro Alice Andrea Anna Antonio Arianna Aurora Beatrice Bianca Camilla Carlo Caterina
+Chiara Christian Cristina Daniele Davide Diego Edoardo Elena Elisa Emanuele Emma Enea Federica
+Federico Filippo Francesca Francesco Gabriele Gaia Giacomo Giada Ginevra Giorgia Giorgio Giovanni
+Giulia Giulio Greta Irene Jacopo Laura Leonardo Lorenzo Luca Lucia Ludovica Marco Margherita Maria
+Martina Matilde Matteo Mattia Michele Nicola Noemi Paolo Pietro Rachele Riccardo Roberto Samuele
+Sara Simone Sofia Stefano Tommaso Valentina Viola Vittoria""".split()
+COGNOMI = """Amato Barbieri Bellini Benedetti Bernardi Bianchi Bruno Caruso Cattaneo Colombo Conti
+Costa D'Angelo De Luca De Santis Esposito Fabbri Farina Ferrara Ferrari Ferri Fiore Fontana Galli
+Gallo Gentile Giordano Greco Guerra Leone Lombardi Lombardo Longo Mancini Marchetti Mariani Marini
+Martinelli Martini Messina Monti Morelli Moretti Neri Orlando Palumbo Parisi Pellegrini Rinaldi Rizzi
+Rizzo Romano Rossetti Rossi Ruggiero Russo Sala Sanna Santoro Serra Silvestri Testa Valentini Villa
+Vitale""".split()
+
+# Discipline del liceo scientifico: (nome, anni). Per sezione intera se valgono per tutti e 5.
+DISCIPLINE = [
+    ("Lingua e letteratura italiana", (1, 2, 3, 4, 5)),
+    ("Matematica", (1, 2, 3, 4, 5)),
+    ("Fisica", (1, 2, 3, 4, 5)),
+    ("Lingua e cultura inglese", (1, 2, 3, 4, 5)),
+    ("Scienze naturali", (1, 2, 3, 4, 5)),
+    ("Disegno e storia dell'arte", (1, 2, 3, 4, 5)),
+    ("Scienze motorie e sportive", (1, 2, 3, 4, 5)),
+    ("Religione cattolica", (1, 2, 3, 4, 5)),
+    ("Storia e geografia", (1, 2)),
+    ("Storia e filosofia", (3, 4, 5)),
+]
+SOLO_ORDINAMENTO = [("Lingua e cultura latina", (1, 2, 3, 4, 5))]
+SOLO_SCIENZE_APPLICATE = [("Informatica", (1, 2, 3, 4, 5))]
+# Discipline che lo stesso docente copre in due sezioni (cattedre su più corsi).
+CONDIVISE = {"Scienze motorie e sportive", "Religione cattolica", "Disegno e storia dell'arte"}
+
+rnd = random.Random(2026)  # sempre gli stessi dati
+User = get_user_model()
+usati = set()
+
+
+def persona():
+    while True:
+        nome, cognome = rnd.choice(NOMI), rnd.choice(COGNOMI)
+        if (nome, cognome) not in usati:
+            usati.add((nome, cognome))
+            return nome, cognome
+
+
+def utente(ruolo_org, org, prefisso=""):
+    nome, cognome = persona()
+    base = f"{prefisso}{nome}.{cognome}".lower().replace("'", "").replace(" ", "")
+    user = User(
+        username=base,
+        first_name=nome,
+        last_name=cognome,
+        email=f"{base}@{DOMINIO_EMAIL}",
+    )
+    user.set_unusable_password()  # accessi demo per ruolo: quando ci sarà l'interfaccia
+    user.save()
+    Membership.objects.create(user=user, organization=org, role=ruolo_org)
+    return user
+
+
+def elimina():
+    org = Organization.objects.filter(slug=SLUG).first()
+    if org is None:
+        return
+    utenti = User.objects.filter(email__endswith="@" + DOMINIO_EMAIL)
+    for model in (DeviceAssignment, TeachingAssignment, StudentEnrollment, Device, DevicePolicy):
+        model.objects.filter(organization=org).delete()
+    for model in (SchoolClass, Student, Section, Track, SchoolYear, Site):
+        model.objects.filter(organization=org).delete()
+    Membership.objects.filter(organization=org).delete()
+    utenti.delete()
+    org.delete()
+
+
+@transaction.atomic
+def crea():
+    org = Organization.objects.create(name=NOME, slug=SLUG)
+    sede = Site.objects.create(
+        organization=org, name="Sede centrale", level=SchoolLevel.SECONDARIA_2, code="DEMO-PS-01"
+    )
+    ordinamento = Track.objects.create(organization=org, site=sede, name="Liceo scientifico")
+    applicate = Track.objects.create(
+        organization=org, site=sede, name="Liceo scientifico, opzione scienze applicate"
+    )
+    anno = SchoolYear.objects.create(
+        organization=org,
+        label="2026/2027",
+        start_date=date(2026, 9, 14),
+        end_date=date(2027, 6, 9),
+        is_current=True,
+    )
+
+    utente(Role.SCHOOL_ADMIN, org, prefisso="preside.")
+    utente(Role.IT_ADMIN, org, prefisso="it.")
+
+    sezioni, classi = {}, {}
+    for lettera in SEZIONI:
+        track = applicate if lettera in SCIENZE_APPLICATE else ordinamento
+        sezioni[lettera] = Section.objects.create(
+            organization=org, site=sede, name=lettera, track=track
+        )
+        for n in range(1, 6):
+            classi[lettera, n] = SchoolClass.objects.create(
+                organization=org, school_year=anno, section=sezioni[lettera], year_number=n
+            )
+
+    # Studenti e iscrizioni
+    codice = 0
+    iscritti = {}
+    for (lettera, n), classe in classi.items():
+        iscritti[classe] = []
+        for _ in range(STUDENTI_PER_CLASSE[n - 1]):
+            codice += 1
+            nome, cognome = persona()
+            studente = Student.objects.create(
+                organization=org, display_name=f"{cognome} {nome}", internal_code=f"S{codice:04d}"
+            )
+            StudentEnrollment.objects.create(organization=org, student=studente, school_class=classe)
+            iscritti[classe].append(studente)
+
+    # Docenti e incarichi
+    condivisi = {}
+    for i, lettera in enumerate(SEZIONI):
+        discipline = DISCIPLINE + (
+            SOLO_SCIENZE_APPLICATE if lettera in SCIENZE_APPLICATE else SOLO_ORDINAMENTO
+        )
+        for disciplina, anni in discipline:
+            chiave = (disciplina, i // 2)  # sezioni A-B, C-D, E-F condividono il docente
+            if disciplina in CONDIVISE and chiave in condivisi:
+                docente = condivisi[chiave]
+            else:
+                docente = utente(Role.TEACHER, org)
+                condivisi[chiave] = docente
+            if len(anni) == 5:
+                TeachingAssignment.objects.create(
+                    organization=org, teacher=docente, school_year=anno,
+                    section=sezioni[lettera], subject=disciplina,
+                )
+            else:
+                for n in anni:
+                    TeachingAssignment.objects.create(
+                        organization=org, teacher=docente, school_year=anno,
+                        section=sezioni[lettera], school_class=classi[lettera, n],
+                        subject=disciplina,
+                    )
+    # Un coordinatore per classe, scelto tra i docenti della sezione
+    for (lettera, n), classe in classi.items():
+        docenti = list(
+            User.objects.filter(
+                teaching_assignments__section=sezioni[lettera]
+            ).distinct().order_by("username")
+        )
+        TeachingAssignment.objects.create(
+            organization=org, teacher=docenti[(n * 3) % len(docenti)], school_year=anno,
+            section=sezioni[lettera], school_class=classe, kind=AssignmentKind.COORDINATORE,
+        )
+    # Due docenti di sostegno (RC-013: nessun abbinamento al singolo studente)
+    for lettera, n in (("B", 1), ("D", 3)):
+        TeachingAssignment.objects.create(
+            organization=org, teacher=utente(Role.TEACHER, org), school_year=anno,
+            section=sezioni[lettera], school_class=classi[lettera, n],
+            kind=AssignmentKind.SOSTEGNO,
+        )
+
+    # Dispositivi: tablet personali al biennio, un carrello per sezione al triennio
+    DevicePolicy.objects.create(organization=org, camera_disabled=False, screen_capture_disabled=True)
+    adesso = timezone.now()
+    numero = 0
+
+    def tablet(classe, studente=None):
+        nonlocal numero
+        numero += 1
+        ritardo = rnd.choices(
+            [timedelta(minutes=rnd.randint(1, 15)), timedelta(hours=rnd.randint(1, 20)),
+             timedelta(days=rnd.randint(3, 12))],
+            weights=[70, 25, 5],
+        )[0]
+        conforme = rnd.random() > 0.06
+        device = Device.objects.create(
+            organization=org,
+            display_name=f"TAB-{numero:04d}",
+            platform="android",
+            agent_version="0.1.0",
+            os_version=rnd.choice(["14", "15", "15"]),
+            model="Tablet di prova 10\"",
+            capabilities=["setting:camera_disabled", "setting:screen_capture_disabled"],
+            secret_hash=hash_secret(new_secret()),  # credenziale scartata: non si collega
+            last_seen_at=adesso - ritardo,
+            policy_version_applied=1,
+            compliant=conforme,
+            non_compliance=[] if conforme else [
+                {"setting": "screen_capture_disabled", "reason": "failed"}
+            ],
+        )
+        DeviceAssignment.objects.create(
+            organization=org, device=device, school_class=classe, student=studente,
+            assigned_at=adesso - timedelta(days=60),
+        )
+
+    for (lettera, n), classe in classi.items():
+        if n <= 2:
+            for studente in iscritti[classe]:
+                tablet(classe, studente)
+    for lettera in SEZIONI:
+        for _ in range(12):
+            tablet(classi[lettera, 3])  # carrello della sezione, in prestito alla terza
+
+    return org
+
+
+if os.environ.get("EDUWISP_DEMO_RESET") == "1":
+    elimina()
+if Organization.objects.filter(slug=SLUG).exists():
+    print("Dati di esempio invariati")
+else:
+    org = crea()
+    print(
+        "Dati di esempio creati:",
+        SchoolClass.objects.filter(organization=org).count(), "classi,",
+        Student.objects.filter(organization=org).count(), "studenti,",
+        Membership.objects.filter(organization=org, role=Role.TEACHER).count(), "docenti,",
+        Device.objects.filter(organization=org).count(), "dispositivi",
+    )
