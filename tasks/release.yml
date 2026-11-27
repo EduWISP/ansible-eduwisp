@@ -49,3 +49,5 @@
     eduwisp_prima_installazione: "{{ installati | length == 0 }}"
     # Endpoint /health/ disponibile dal rilascio 0.2.0 (eduwisp-utils).
     eduwisp_health: "{{ 'eduwisp-utils' in eduwisp_moduli_voluti }}"
+    # Interfaccia per ruoli e registro delle operazioni dal rilascio 0.3.0 (ADR-0018).
+    eduwisp_portal: "{{ 'eduwisp-portal' in eduwisp_moduli_voluti }}"

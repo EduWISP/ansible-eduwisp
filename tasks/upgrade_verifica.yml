@@ -13,7 +13,8 @@
   ansible.builtin.command: "/usr/local/sbin/eduwisp-verifica-http {{ item.path }}"
   loop: >-
     {{ [{'path': '/admin/login/', 'code': '200'}, {'path': '/api/protocol/v0/policy', 'code': '401'}]
-       + ([{'path': '/health/', 'code': '200'}] if eduwisp_health else []) }}
+       + ([{'path': '/health/', 'code': '200'}] if eduwisp_health else [])
+       + ([{'path': '/accedi/', 'code': '200'}] if eduwisp_portal else []) }}
   register: eduwisp_verifica_http
   until: eduwisp_verifica_http.stdout == item.code
   retries: 10

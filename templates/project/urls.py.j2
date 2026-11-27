@@ -4,10 +4,15 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 urlpatterns = [
+{% if not eduwisp_portal %}
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
+{% endif %}
     path("admin/", admin.site.urls),
     path("", include("eduwisp_devices.urls")),
 {% if eduwisp_health %}
     path("", include("eduwisp_utils.urls")),
+{% endif %}
+{% if eduwisp_portal %}
+    path("", include("eduwisp_portal.urls")),
 {% endif %}
 ]
