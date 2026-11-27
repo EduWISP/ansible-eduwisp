@@ -4,3 +4,4 @@
 .vscode/
 *.retry
 inventory.yml
+.ansible/
