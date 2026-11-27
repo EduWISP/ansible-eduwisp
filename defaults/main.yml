@@ -12,7 +12,7 @@ eduwisp_demo_data: false
 eduwisp_demo_data_reset: false
 
 # Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
-eduwisp_platform_release: "0.5.0"
+eduwisp_platform_release: "0.6.0"
 # Solo per lo sviluppo: moduli e versioni (rami o commit) al posto del rilascio.
 # Esempio: [{ name: eduwisp-users, version: main }, ...]
 eduwisp_modules: []
@@ -98,7 +98,7 @@ eduwisp_backup_keep_daily: 7
 eduwisp_backup_keep_weekly: 4
 eduwisp_backup_keep_monthly: 6
 eduwisp_backup_databases: ["{{ eduwisp_db_name }}"]
-eduwisp_backup_paths: [/etc/eduwisp, /etc/nginx, /etc/valkey, /etc/nftables.conf, /etc/fail2ban/jail.d, /etc/ssh/sshd_config.d]
+eduwisp_backup_paths: [/etc/eduwisp, /etc/nginx, /etc/valkey, /etc/nftables.conf, /etc/fail2ban/jail.d, /etc/ssh/sshd_config.d, /opt/eduwisp/media, /var/lib/eduwisp/privato]
 
 # Avvisi e monitoraggio (ADR-0016).
 eduwisp_alert_email: ""                 # destinatario degli avvisi; vuoto = avvisi disattivati

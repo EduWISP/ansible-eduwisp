@@ -13,6 +13,9 @@
     - { path: "{{ eduwisp_home }}/static", owner: root, mode: "0755" }
     - { path: /etc/eduwisp, owner: root }
     - { path: /var/lib/eduwisp, mode: "0750" }
+    # Loghi delle app, letti da nginx (gruppo eduwisp); APK non pubblici (ADR-0020).
+    - { path: "{{ eduwisp_home }}/media" }
+    - { path: /var/lib/eduwisp/privato, mode: "0700" }
 
 - name: Chiave segreta di Django (generata una sola volta sul server)
   ansible.builtin.shell: |
