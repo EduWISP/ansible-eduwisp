@@ -82,6 +82,14 @@ upstream eduwisp_app {
 {{ reti_admin }}
 {{ proxy }}
     }
+{% if eduwisp_api %}
+    # Accesso delle app mobili (ADR-0022): stesso limite del portale.
+    location = /api/app/v1/accedi {
+        limit_req zone=eduwisp_login burst={{ eduwisp_ratelimit_login_burst }} nodelay;
+{{ reti_admin }}
+{{ proxy }}
+    }
+{% endif %}
 {% if eduwisp_portal %}
     # Accesso al portale (ADR-0018): stesso limite; senza TLS solo dalle reti locali.
     location = /accedi/ {

@@ -53,3 +53,5 @@
     eduwisp_portal: "{{ 'eduwisp-portal' in eduwisp_moduli_voluti }}"
     # App consentite dal rilascio 0.5.0 (ADR-0019).
     eduwisp_apps: "{{ 'eduwisp-apps' in eduwisp_moduli_voluti }}"
+    # API per le app mobili dal rilascio 0.8.0 (ADR-0022).
+    eduwisp_api: "{{ 'eduwisp-api' in eduwisp_moduli_voluti }}"

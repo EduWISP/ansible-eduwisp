@@ -12,7 +12,7 @@ eduwisp_demo_data: false
 eduwisp_demo_data_reset: false
 
 # Rilascio della piattaforma: fissa le versioni dei moduli (file in releases/).
-eduwisp_platform_release: "0.7.1"
+eduwisp_platform_release: "0.8.0"
 # Solo per lo sviluppo: moduli e versioni (rami o commit) al posto del rilascio.
 # Esempio: [{ name: eduwisp-users, version: main }, ...]
 eduwisp_modules: []

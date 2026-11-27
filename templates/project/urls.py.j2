@@ -15,6 +15,9 @@ urlpatterns = [
 {% if eduwisp_apps %}
     path("", include("eduwisp_apps.urls")),
 {% endif %}
+{% if eduwisp_api %}
+    path("", include("eduwisp_api.urls")),
+{% endif %}
 {% if eduwisp_portal %}
     path("", include("eduwisp_portal.urls")),
 {% endif %}
