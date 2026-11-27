@@ -103,3 +103,12 @@ eduwisp_report_time: "*-*-* 07:00:00"
 eduwisp_admin_user: ""
 eduwisp_admin_email: ""
 eduwisp_admin_password: ""
+
+# Limiti di richieste (nginx) e conservazione dei log (ADR-0016).
+# La registrazione è tollerante: una scuola dietro NAT registra molti tablet dallo stesso IP.
+eduwisp_ratelimit_enroll: 60r/m
+eduwisp_ratelimit_enroll_burst: 60
+eduwisp_ratelimit_login: 10r/m
+eduwisp_ratelimit_login_burst: 10
+eduwisp_log_retention_days: 90
+eduwisp_suricata_log_days: 30

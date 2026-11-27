@@ -51,11 +51,16 @@
     insertafter: '^http \{'
   notify: Ricarica nginx
 
-- name: Limite della dimensione delle richieste
+- name: Limiti di dimensione e di frequenza delle richieste
   ansible.builtin.copy:
     dest: /etc/nginx/conf.d/eduwisp-security.conf
     mode: "0644"
-    content: "client_max_body_size 10m;\n"
+    content: |
+      # Gestito da Ansible (ansible-eduwisp)
+      client_max_body_size 10m;
+      limit_req_zone $binary_remote_addr zone=eduwisp_enroll:10m rate={{ eduwisp_ratelimit_enroll }};
+      limit_req_zone $binary_remote_addr zone=eduwisp_login:10m rate={{ eduwisp_ratelimit_login }};
+      limit_req_status 429;
   notify: Ricarica nginx
 
 - name: Verifica la configurazione di nginx

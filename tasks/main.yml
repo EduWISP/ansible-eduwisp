@@ -17,6 +17,8 @@
 - ansible.builtin.import_tasks: ids.yml
   tags: [ids]
   when: eduwisp_ids_enabled
+- ansible.builtin.import_tasks: logs.yml
+  tags: [logs, hardening]
 - ansible.builtin.import_tasks: database.yml
   tags: [database]
 - ansible.builtin.import_tasks: app.yml

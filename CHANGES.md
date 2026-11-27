@@ -9,3 +9,4 @@
 - Backup con BorgBackup e prova di ripristino mensile (ADR-0016, #6). / *BorgBackup backups with monthly restore test.*
 - Monitoraggio con Monit, avvisi via email (msmtp), avviso sui fallimenti dei backup, riepilogo quotidiano di sicurezza (#7). / *Monit monitoring, email alerts, backup failure alerts, daily security summary.*
 - Amministratore gestito da Ansible con password dal vault. / *Admin account managed from the vault.*
+- Limiti di richieste su nginx e conservazione dei log a 90 giorni al massimo (#8). / *nginx rate limiting and 90-day log retention.*

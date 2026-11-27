@@ -10,17 +10,41 @@ upstream eduwisp_app {
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 {% endset %}
 
-{% set applicazione %}
-    location /static/ {
-        alias {{ eduwisp_home }}/static/;
-        expires 7d;
-    }
-    location / {
+{% set proxy %}
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_redirect off;
         proxy_pass http://eduwisp_app;
+{% endset %}
+
+{% set reti_admin %}
+{% if not eduwisp_tls %}
+{% for rete in eduwisp_admin_networks %}
+        allow {{ rete }};
+{% endfor %}
+        deny all;
+{% endif %}
+{% endset %}
+
+{% set applicazione %}
+    location /static/ {
+        alias {{ eduwisp_home }}/static/;
+        expires 7d;
+    }
+    # Registrazione dei dispositivi: limite tollerante (scuole dietro NAT).
+    location = /api/protocol/v0/enroll {
+        limit_req zone=eduwisp_enroll burst={{ eduwisp_ratelimit_enroll_burst }} nodelay;
+{{ proxy }}
+    }
+    # Accesso all'amministrazione: limite contro i tentativi di indovinare la password.
+    location = /admin/login/ {
+        limit_req zone=eduwisp_login burst={{ eduwisp_ratelimit_login_burst }} nodelay;
+{{ reti_admin }}
+{{ proxy }}
+    }
+    location / {
+{{ proxy }}
     }
 {% endset %}
 
@@ -58,14 +82,8 @@ server {
 {{ intestazioni }}
     # Senza TLS l'amministrazione è raggiungibile solo dalle reti locali.
     location /admin/ {
-{% for rete in eduwisp_admin_networks %}
-        allow {{ rete }};
-{% endfor %}
-        deny all;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_pass http://eduwisp_app;
+{{ reti_admin }}
+{{ proxy }}
     }
 {{ applicazione }}
 }

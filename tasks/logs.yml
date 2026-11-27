@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Conservazione dei log: al massimo eduwisp_log_retention_days giorni (ADR-0016).
+---
+- name: Cartella di configurazione di journald
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Journal persistente, al massimo 90 giorni
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/eduwisp.conf
+    mode: "0644"
+    content: |
+      # Gestito da Ansible (ansible-eduwisp)
+      [Journal]
+      Storage=persistent
+      MaxRetentionSec={{ eduwisp_log_retention_days }}day
+      SystemMaxUse=1G
+  register: eduwisp_journald
+
+- name: Riavvia journald se la configurazione è cambiata
+  ansible.builtin.systemd_service:
+    name: systemd-journald
+    state: restarted
+  when: eduwisp_journald.changed
+
+- name: Rotazione giornaliera dei log di Suricata
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/suricata
+    mode: "0644"
+    content: |
+      # Gestito da Ansible (ansible-eduwisp): {{ eduwisp_suricata_log_days }} giorni
+      /var/log/suricata/*.log
+      /var/log/suricata/*.json
+      {
+      	daily
+      	rotate {{ eduwisp_suricata_log_days }}
+      	maxsize 500M
+      	missingok
+      	notifempty
+      	compress
+      	delaycompress
+      	copytruncate
+      	sharedscripts
+      	postrotate
+      		/bin/kill -HUP $(cat /var/run/suricata.pid 2>/dev/null) 2>/dev/null || true
+      	endscript
+      }
+  when: eduwisp_ids_enabled
+
+- name: Log di Suricata leggibili solo dagli amministratori
+  ansible.builtin.file:
+    path: /var/log/suricata
+    mode: "0750"
+  when: eduwisp_ids_enabled
