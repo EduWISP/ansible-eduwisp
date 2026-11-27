@@ -66,7 +66,7 @@ Gli altri segreti (chiave di Django, password di Valkey, passphrase di Borg) ven
 
 ## Dati di esempio (solo demo) / Demo data
 
-Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato**: 6 sezioni (A-D ordinamento, E-F scienze applicate) per 5 anni, cioè 30 classi, circa 700 studenti, preside, amministratore IT, docenti con le discipline del liceo, coordinatori, sostegno, tablet personali per il biennio e un carrello condiviso per sezione. Dal rilascio 0.3.0 anche le **famiglie** (ADR-0018): un referente per ogni studente e spesso un secondo genitore, casi con un solo genitore, tutori, affidatari, collegamenti disattivati e fratelli. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
+Con `eduwisp_demo_data: true` il ruolo carica un **liceo scientifico inventato**: 6 sezioni (A-D ordinamento, E-F scienze applicate) per 5 anni, cioè 30 classi, circa 700 studenti, preside, amministratore IT, docenti con le discipline del liceo, coordinatori, sostegno, tablet personali per il biennio e un carrello condiviso per sezione. Dal rilascio 0.3.0 anche le **famiglie** (ADR-0018): un referente per ogni studente e spesso un secondo genitore, casi con un solo genitore, tutori, affidatari, collegamenti disattivati e fratelli. Dal rilascio 0.4.0 anche le **date della maggiore età** e le scelte degli studenti maggiorenni sull'accesso dei familiari. Nomi generati a caso, indirizzi email sul dominio riservato `.invalid`, nessuna persona reale. Lo script è [`files/demo_data.py`](files/demo_data.py).
 
 Funziona solo se è impostato `eduwisp_environment_notice` (ambiente di prova, ADR-0015) e carica i dati una volta sola; `eduwisp_demo_data_reset: true` li ricrea da zero.
 
@@ -79,7 +79,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.3.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.4.0
 ```
 
 La procedura:

@@ -6,6 +6,8 @@ Liceo scientifico con 6 sezioni (A-F) e 5 anni: 30 classi. Sezioni E ed F all'op
 scienze applicate. Tablet personali per il biennio, un carrello condiviso per il triennio.
 Famiglie (ADR-0018): un referente per studente e spesso un secondo familiare; casi con un solo
 genitore, tutori, affidatari, un collegamento disattivato e fratelli nello stesso istituto.
+Maggiorenni: data della maggiore età per tutti; chi è già maggiorenne ha scelto (o non ancora)
+se lasciare l'accesso ai familiari, come farebbe dal tablet.
 
 Uso: manage.py shell < demo_data.py   (EDUWISP_DEMO_RESET=1 per ricreare tutto)
 Idempotente: se l'istituto di esempio esiste già non cambia nulla.
@@ -13,7 +15,7 @@ Idempotente: se l'istituto di esempio esiste già non cambia nulla.
 
 import os
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -160,9 +162,21 @@ def crea():
         for _ in range(STUDENTI_PER_CLASSE[n - 1]):
             codice += 1
             nome, cognome = persona()
+            # Nati nel 2013 - n: maggiorenni nel 2031 - n (la quinta compie 18 anni nel 2026).
+            maggiorenne_dal = date(2031 - n, 1, 1) + timedelta(days=rnd.randint(0, 364))
             studente = Student.objects.create(
-                organization=org, display_name=f"{cognome} {nome}", internal_code=f"S{codice:04d}"
+                organization=org, display_name=f"{cognome} {nome}", internal_code=f"S{codice:04d}",
+                adult_on=maggiorenne_dal,
             )
+            if maggiorenne_dal <= date.today():
+                scelta = rnd.choices([True, False, None], weights=[55, 15, 30])[0]
+                if scelta is not None:
+                    studente.family_access_granted = scelta
+                    deciso = timezone.make_aware(
+                        datetime.combine(maggiorenne_dal, time(18)) + timedelta(days=rnd.randint(0, 20))
+                    )
+                    studente.family_access_decided_at = min(deciso, timezone.now())
+                    studente.save()
             StudentEnrollment.objects.create(organization=org, student=studente, school_class=classe)
             iscritti[classe].append(studente)
 
@@ -309,5 +323,7 @@ else:
         Student.objects.filter(organization=org).count(), "studenti,",
         Membership.objects.filter(organization=org, role=Role.TEACHER).count(), "docenti,",
         Membership.objects.filter(organization=org, role=Role.GUARDIAN).count(), "familiari,",
+        Student.objects.filter(organization=org, adult_on__lte=date.today()).count(),
+        "maggiorenni,",
         Device.objects.filter(organization=org).count(), "dispositivi",
     )
