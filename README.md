@@ -101,7 +101,7 @@ Le versioni dei moduli sono fissate da un **rilascio della piattaforma** ([`rele
 Per aggiornare basta un comando:
 
 ```bash
-ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.9.0
+ANSIBLE_ROLES_PATH=.. ansible-playbook -i ~/eduwisp-inventory.yml examples/aggiorna.yml -e eduwisp_platform_release=0.9.1
 ```
 
 La procedura:

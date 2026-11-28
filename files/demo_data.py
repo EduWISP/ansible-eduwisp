@@ -175,6 +175,7 @@ def crea():
     # Studenti e iscrizioni
     codice = 0
     iscritti = {}
+    cognomi = {}  # cognome di ogni studente: può essere di due parole («De Luca»)
     for (lettera, n), classe in classi.items():
         iscritti[classe] = []
         for _ in range(STUDENTI_PER_CLASSE[n - 1]):
@@ -191,6 +192,7 @@ def crea():
                 organization=org, display_name=f"{cognome} {nome}", internal_code=f"S{codice:04d}",
                 birth_date=nascita,
             )
+            cognomi[studente.pk] = cognome
             if maggiorenne_dal <= date.today():
                 scelta = rnd.choices([True, False, None], weights=[55, 15, 30])[0]
                 if scelta is not None:
@@ -209,8 +211,9 @@ def crea():
     rnd.shuffle(studenti)
     fratelli = {}
     for primo, secondo in zip(studenti[0:12:2], studenti[1:12:2]):  # 6 coppie di fratelli
-        cognome = primo.display_name.split(" ")[0]
-        secondo.display_name = f"{cognome} {secondo.display_name.split(' ', 1)[1]}"
+        # Stesso cognome, nome diverso (persona() non ripete mai nome e cognome già usati)
+        nome, cognome = persona(cognomi[primo.pk])
+        secondo.display_name = f"{cognome} {nome}"
         secondo.save(update_fields=["display_name"])
         fratelli[primo] = secondo
     gia_collegati = set(fratelli.values())
