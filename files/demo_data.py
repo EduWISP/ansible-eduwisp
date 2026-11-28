@@ -65,11 +65,12 @@ Giulia Giulio Greta Irene Jacopo Laura Leonardo Lorenzo Luca Lucia Ludovica Marc
 Martina Matilde Matteo Mattia Michele Nicola Noemi Paolo Pietro Rachele Riccardo Roberto Samuele
 Sara Simone Sofia Stefano Tommaso Valentina Viola Vittoria""".split()
 COGNOMI = """Amato Barbieri Bellini Benedetti Bernardi Bianchi Bruno Caruso Cattaneo Colombo Conti
-Costa D'Angelo De Luca De Santis Esposito Fabbri Farina Ferrara Ferrari Ferri Fiore Fontana Galli
+Costa D'Angelo De_Luca De_Santis Esposito Fabbri Farina Ferrara Ferrari Ferri Fiore Fontana Galli
 Gallo Gentile Giordano Greco Guerra Leone Lombardi Lombardo Longo Mancini Marchetti Mariani Marini
 Martinelli Martini Messina Monti Morelli Moretti Neri Orlando Palumbo Parisi Pellegrini Rinaldi Rizzi
 Rizzo Romano Rossetti Rossi Ruggiero Russo Sala Sanna Santoro Serra Silvestri Testa Valentini Villa
 Vitale""".split()
+COGNOMI = [c.replace("_", " ") for c in COGNOMI]  # «De Luca» è un cognome solo
 
 # Discipline del liceo scientifico: (nome, anni). Per sezione intera se valgono per tutti e 5.
 DISCIPLINE = [
